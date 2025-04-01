@@ -54,6 +54,8 @@ def imhk_sampler(B, sigma, c, num_samples):
 # -------------------------------
 # Run + Save + Plot
 # -------------------------------
+import os
+
 if __name__ == "__main__":
     B = np.array([[1, 0], [0, 1]])  # standard Z^2 lattice
     sigma = 2.0
@@ -62,6 +64,11 @@ if __name__ == "__main__":
 
     samples, rejection_rate = imhk_sampler(B, sigma, c, num_samples)
 
+    # Make sure directories exist before saving
+    os.makedirs("results/logs", exist_ok=True)
+    os.makedirs("results/plots", exist_ok=True)
+
+    # Save samples and plot
     np.save("results/logs/samples_imhk.npy", samples)
 
     plt.figure(figsize=(6, 6))
