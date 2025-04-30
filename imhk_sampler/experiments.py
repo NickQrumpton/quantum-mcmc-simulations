@@ -10,12 +10,21 @@ from functools import partial
 import os
 import logging
 
-# Configure logging
+# Create necessary directories
+base_dir = Path(__file__).resolve().parent.parent
+results_dir = base_dir / "results"
+logs_dir = results_dir / "logs"
+plots_dir = results_dir / "plots"
+
+for directory in [results_dir, logs_dir, plots_dir]:
+    directory.mkdir(parents=True, exist_ok=True)
+
+# Configure logging with proper path resolution
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("results/logs/experiments.log"),
+        logging.FileHandler(logs_dir / "experiments.log"),
         logging.StreamHandler()
     ]
 )
@@ -152,11 +161,11 @@ def run_experiment(
     Raises:
         ValueError: If input parameters are invalid
     """
-    # Import required functions
-    from samplers import imhk_sampler, klein_sampler
-    from diagnostics import plot_trace, plot_autocorrelation, plot_acceptance_trace, compute_autocorrelation, compute_ess
-    from visualization import plot_2d_samples, plot_3d_samples, plot_2d_projections, plot_pca_projection
-    from stats import compute_total_variation_distance, compute_kl_divergence
+    # Import required functions with proper module paths
+    from imhk_sampler.samplers import imhk_sampler, klein_sampler
+    from imhk_sampler.diagnostics import plot_trace, plot_autocorrelation, plot_acceptance_trace, compute_autocorrelation, compute_ess
+    from imhk_sampler.visualization import plot_2d_samples, plot_3d_samples, plot_2d_projections, plot_pca_projection
+    from imhk_sampler.stats import compute_total_variation_distance, compute_kl_divergence
     
     # Input validation
     if not isinstance(dim, (int, Integer)) or dim < 2:
@@ -171,17 +180,8 @@ def run_experiment(
     if not validate_basis_type(basis_type):
         raise ValueError(f"Unknown basis type: {basis_type}. Valid options are 'identity', 'skewed', 'ill-conditioned'")
     
-    # Ensure output directories exist
-    results_dir = Path("results")
-    plots_dir = results_dir / "plots"
-    logs_dir = results_dir / "logs"
-    
-    for directory in [results_dir, plots_dir, logs_dir]:
-        try:
-            directory.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            logger.error(f"Failed to create directory {directory}: {e}")
-            raise
+    # Get global directory paths
+    global results_dir, plots_dir, logs_dir
     
     # Set up the center
     if center is None:
@@ -503,15 +503,8 @@ def parameter_sweep(
         # If centers is a list of vectors, assume it applies to all dimensions
         centers = {dim: [vector(RR, c) for c in centers if len(c) == dim] for dim in dimensions}
     
-    # Ensure output directories exist
-    logs_dir = Path("results/logs")
-    plots_dir = Path("results/plots")
-    try:
-        logs_dir.mkdir(parents=True, exist_ok=True)
-        plots_dir.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
-        logger.error(f"Failed to create output directories: {e}")
-        raise
+    # Get global directory paths
+    global logs_dir, plots_dir
     
     # Create experiment parameter combinations
     experiment_params = []
@@ -636,13 +629,8 @@ def plot_parameter_sweep_results(
     Returns:
         None (saves plots to files)
     """
-    # Ensure plots directory exists
-    plots_dir = Path("results/plots")
-    try:
-        plots_dir.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
-        logger.error(f"Failed to create plots directory: {e}")
-        return
+    # Get global plot directory
+    global plots_dir
     
     # Set plot style for publication quality
     plt.style.use('seaborn-whitegrid')
@@ -827,187 +815,3 @@ def plot_parameter_sweep_results(
             plt.close(fig)
         except Exception as e:
             logger.error(f"Error plotting TV ratio for dimension {dim}: {e}")
-
-
-def compare_convergence_times(results: Dict[Tuple, Dict[str, Any]]) -> None:
-    """
-    Analyze and compare convergence times across different configurations.
-    
-    Mathematical Context:
-    This function analyzes the effective time required to generate statistically 
-    independent samples, accounting for autocorrelation in MCMC methods through
-    the Effective Sample Size (ESS) adjustment.
-    
-    Cryptographic Relevance:
-    For lattice-based cryptography implementations:
-    - Time per effective sample is crucial for practical key generation and signing
-    - Helps determine optimal sampler choice based on efficiency requirements
-    - Identifies parameter regimes where one sampler outperforms the other
-    - Provides insights for optimizing cryptographic implementations
-    
-    Args:
-        results: Dictionary of results from parameter_sweep
-        
-    Returns:
-        None (saves plots to files)
-    """
-    # Ensure plots directory exists
-    plots_dir = Path("results/plots")
-    try:
-        plots_dir.mkdir(parents=True, exist_ok=True)
-    except Exception as e:
-        logger.error(f"Failed to create plots directory: {e}")
-        return
-    
-    # Set plot style for publication quality
-    plt.style.use('seaborn-whitegrid')
-    plt.rcParams.update({
-        'figure.dpi': 300,
-        'savefig.dpi': 300,
-        'font.size': 10,
-        'axes.titlesize': 12,
-        'axes.labelsize': 11,
-        'xtick.labelsize': 9,
-        'ytick.labelsize': 9,
-        'legend.fontsize': 9
-    })
-    
-    # Extract dimensions, sigmas, and basis types from results
-    dimensions = sorted(set(key[0] for key in results.keys()))
-    sigmas = sorted(set(key[1] for key in results.keys()))
-    basis_types = sorted(set(key[2] for key in results.keys()))
-    
-    # Group by dimension
-    for dim in dimensions:
-        try:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            
-            markers = ['o', 's', '^', 'D', 'x', '+']
-            colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
-            
-            for i, basis_type in enumerate(basis_types):
-                # Extract ESS-adjusted times
-                x_data = []
-                y_imhk = []
-                y_klein = []
-                
-                for sigma in sigmas:
-                    key = (dim, sigma, basis_type, tuple([0] * dim))
-                    if key in results:
-                        res = results[key]
-                        if ('imhk_time' in res and 'imhk_ess' in res and 
-                            'klein_time' in res and res['imhk_ess']):
-                            x_data.append(sigma)
-                            
-                            # Compute ESS-adjusted time for IMHK
-                            ess_avg = np.mean(res['imhk_ess'])
-                            if ess_avg > 0:  # Protect against division by zero
-                                adj_time_imhk = res['imhk_time'] * res['num_samples'] / ess_avg
-                                y_imhk.append(adj_time_imhk)
-                            else:
-                                y_imhk.append(np.nan)
-                            
-                            # Klein time (no adjustment needed as samples are independent)
-                            y_klein.append(res['klein_time'])
-                
-                if x_data:
-                    marker_imhk = markers[i % len(markers)]
-                    marker_klein = markers[(i + 1) % len(markers)]
-                    color = colors[i % len(colors)]
-                    
-                    ax.plot(x_data, y_imhk, marker=marker_imhk, linestyle='-', color=color,
-                           label=f"IMHK {basis_type}", linewidth=1.5, markersize=6)
-                    ax.plot(x_data, y_klein, marker=marker_klein, linestyle='--', color=color,
-                           label=f"Klein {basis_type}", linewidth=1.0, markersize=5, alpha=0.7)
-            
-            # Add smoothing parameter reference lines
-            epsilon = 0.01
-            eta = calculate_smoothing_parameter(dim, epsilon)
-            
-            ratios = [1.0, 2.0, 4.0]
-            for ratio in ratios:
-                sigma_val = ratio * eta
-                if min(sigmas) <= sigma_val <= max(sigmas):
-                    ax.axvline(sigma_val, color='gray', linestyle='--', alpha=0.5, 
-                             label=f"σ/η = {ratio}")
-            
-            ax.set_xlabel('Gaussian Parameter (σ)')
-            ax.set_ylabel('Time (seconds) per Effective Sample')
-            ax.set_title(f'Convergence Time vs. σ (Dimension {dim})')
-            ax.grid(True, alpha=0.3)
-            
-            # Set y-axis to log scale if values span orders of magnitude
-            if np.nanmax(y_imhk + y_klein) / np.nanmin([x for x in y_imhk + y_klein if x > 0]) > 100:
-                ax.set_yscale('log')
-            
-            # Create a more compact legend with two columns
-            ax.legend(loc='best', frameon=True, framealpha=0.9, fancybox=True, ncol=2)
-            
-            plt.tight_layout()
-            plt.savefig(plots_dir / f'convergence_time_dim{dim}.png')
-            plt.close(fig)
-        except Exception as e:
-            logger.error(f"Error plotting convergence time for dimension {dim}: {e}")
-        
-        # Also plot the ratio
-        try:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            
-            for i, basis_type in enumerate(basis_types):
-                x_data = []
-                y_ratio = []
-                
-                for sigma in sigmas:
-                    key = (dim, sigma, basis_type, tuple([0] * dim))
-                    if key in results:
-                        res = results[key]
-                        if ('imhk_time' in res and 'imhk_ess' in res and 
-                            'klein_time' in res and res['imhk_ess'] and res['klein_time'] > 0):
-                            x_data.append(sigma)
-                            
-                            # Compute ESS-adjusted time for IMHK
-                            ess_avg = np.mean(res['imhk_ess'])
-                            if ess_avg > 0:  # Protect against division by zero
-                                adj_time_imhk = res['imhk_time'] * res['num_samples'] / ess_avg
-                                
-                                # Compute time ratio
-                                ratio = adj_time_imhk / res['klein_time']
-                                y_ratio.append(ratio)
-                            else:
-                                y_ratio.append(np.nan)
-                
-                if x_data:
-                    marker = markers[i % len(markers)]
-                    color = colors[i % len(colors)]
-                    ax.plot(x_data, y_ratio, marker=marker, linestyle='-', color=color,
-                           label=f"{basis_type}", linewidth=1.5, markersize=6)
-            
-            # Add smoothing parameter reference lines
-            epsilon = 0.01
-            eta = calculate_smoothing_parameter(dim, epsilon)
-            
-            ratios = [1.0, 2.0, 4.0]
-            for ratio in ratios:
-                sigma_val = ratio * eta
-                if min(sigmas) <= sigma_val <= max(sigmas):
-                    ax.axvline(sigma_val, color='gray', linestyle='--', alpha=0.5, 
-                             label=f"σ/η = {ratio}")
-            
-            ax.set_xlabel('Gaussian Parameter (σ)')
-            ax.set_ylabel('Time Ratio (IMHK/Klein)')
-            ax.set_title(f'Time Overhead Ratio vs. σ (Dimension {dim})')
-            ax.axhline(1.0, color='r', linestyle='--', alpha=0.5, label='Equal Time')
-            ax.grid(True, alpha=0.3)
-            
-            # Set y-axis to log scale if values span orders of magnitude
-            if np.nanmax(y_ratio) / np.nanmin([x for x in y_ratio if x > 0]) > 100:
-                ax.set_yscale('log')
-            
-            # Create a more compact legend
-            ax.legend(loc='best', frameon=True, framealpha=0.9, fancybox=True)
-            
-            plt.tight_layout()
-            plt.savefig(plots_dir / f'time_ratio_dim{dim}.png')
-            plt.close(fig)
-        except Exception as e:
-            logger.error(f"Error plotting time ratio for dimension {dim}: {e}")
