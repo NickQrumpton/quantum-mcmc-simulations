@@ -17,6 +17,23 @@ plt.rcParams['figure.dpi'] = 300
 plt.rcParams['savefig.dpi'] = 300
 
 
+def get_results_path():
+    """Get absolute path to results directory."""
+    from pathlib import Path
+    
+    # Get the absolute path of the current file
+    current_file = Path(__file__).resolve()
+    
+    # Get the project root
+    project_root = current_file.parent.parent
+    
+    # Create and return the results path
+    results_path = project_root / "results"
+    results_path.mkdir(parents=True, exist_ok=True)
+    
+    return results_path
+
+
 def _to_numpy(samples: List[Union[Vector, np.ndarray, List]]) -> np.ndarray:
     """
     Convert SageMath vectors or lists to a NumPy array.
@@ -102,7 +119,7 @@ def plot_2d_samples(samples: List[Union[Vector, np.ndarray, List]],
     
     # Import discrete_gaussian_pdf if not provided
     if discrete_gaussian_pdf is None:
-        from utils import discrete_gaussian_pdf
+        from imhk_sampler.utils import discrete_gaussian_pdf
     
     # Validate and convert samples
     samples_np = _to_numpy(samples)
@@ -120,7 +137,7 @@ def plot_2d_samples(samples: List[Union[Vector, np.ndarray, List]],
             raise ValueError(f"Center must be 2D, got {len(center)}D")
     
     # Ensure output directory exists
-    plot_dir = Path("results/plots")
+    plot_dir = get_results_path() / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
     
     # Create figure with higher quality settings
@@ -272,8 +289,13 @@ def plot_2d_samples(samples: List[Union[Vector, np.ndarray, List]],
     ax_histy.set_xlabel('Density', fontsize=10)
     
     plt.tight_layout()
-    plt.savefig(plot_dir / filename, dpi=300)
-    plt.close(fig)
+    try:
+        plt.savefig(plot_dir / filename, dpi=300)
+        print(f"Plot saved to {plot_dir / filename}")
+    except Exception as e:
+        print(f"Error saving plot: {e}")
+    finally:
+        plt.close(fig)
 
 
 def plot_3d_samples(samples: List[Union[Vector, np.ndarray, List]], 
@@ -331,7 +353,7 @@ def plot_3d_samples(samples: List[Union[Vector, np.ndarray, List]],
             raise ValueError(f"Center must be 3D, got {len(center)}D")
     
     # Ensure output directory exists
-    plot_dir = Path("results/plots")
+    plot_dir = get_results_path() / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
     
     # Create figure with higher quality settings
@@ -387,7 +409,11 @@ def plot_3d_samples(samples: List[Union[Vector, np.ndarray, List]],
         # Default view
         ax.view_init(elev=30, azim=30)
         plt.tight_layout()
-        plt.savefig(plot_dir / filename, dpi=300)
+        try:
+            plt.savefig(plot_dir / filename, dpi=300)
+            print(f"Plot saved to {plot_dir / filename}")
+        except Exception as e:
+            print(f"Error saving plot: {e}")
     else:
         # Save multiple views for 3D visualization
         views = [(30, 30), (0, 0), (0, 90), (90, 0)]
@@ -395,7 +421,11 @@ def plot_3d_samples(samples: List[Union[Vector, np.ndarray, List]],
             ax.view_init(elev=elev, azim=azim)
             plt.tight_layout()
             view_filename = f"{os.path.splitext(filename)[0]}_view{i+1}{os.path.splitext(filename)[1]}"
-            plt.savefig(plot_dir / view_filename, dpi=300)
+            try:
+                plt.savefig(plot_dir / view_filename, dpi=300)
+                print(f"Plot saved to {plot_dir / view_filename}")
+            except Exception as e:
+                print(f"Error saving plot {i+1}: {e}")
     
     plt.close(fig)
 
@@ -455,7 +485,7 @@ def plot_2d_projections(samples: List[Union[Vector, np.ndarray, List]],
             raise ValueError(f"Center dimensions ({len(center)}) must match sample dimensions ({n_dims})")
     
     # Ensure output directory exists
-    plot_dir = Path("results/plots")
+    plot_dir = get_results_path() / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
     
     # Create all pairs of dimensions
@@ -542,8 +572,13 @@ def plot_2d_projections(samples: List[Union[Vector, np.ndarray, List]],
     
     plt.tight_layout()
     plt.subplots_adjust(top=0.92)  # Make room for the title
-    plt.savefig(plot_dir / filename, dpi=300)
-    plt.close(fig)
+    try:
+        plt.savefig(plot_dir / filename, dpi=300)
+        print(f"Plot saved to {plot_dir / filename}")
+    except Exception as e:
+        print(f"Error saving plot: {e}")
+    finally:
+        plt.close(fig)
 
 
 def plot_pca_projection(samples: List[Union[Vector, np.ndarray, List]], 
@@ -602,7 +637,7 @@ def plot_pca_projection(samples: List[Union[Vector, np.ndarray, List]],
             raise ValueError(f"Center dimensions ({len(center)}) must match sample dimensions ({n_dims})")
     
     # Ensure output directory exists
-    plot_dir = Path("results/plots")
+    plot_dir = get_results_path() / "plots"
     plot_dir.mkdir(parents=True, exist_ok=True)
     
     # Apply PCA
@@ -630,15 +665,7 @@ def plot_pca_projection(samples: List[Union[Vector, np.ndarray, List]],
         z = kde(np.vstack([samples_pca[:, 0], samples_pca[:, 1]]))
         
         # Create a scatter plot with density-based coloring
-        scatter = ax.scatter(samples_pca[:, 0], samples_pca[:, 1], c=z, 
-                           cmap='viridis', alpha=0.7, s=30, 
-                           edgecolor='k', linewidth=0.5)
-        cbar = plt.colorbar(scatter, ax=ax, label='Point Density')
-        cbar.ax.tick_params(labelsize=10)
-    except Exception as e:
-        # Fallback if KDE fails
-        print(f"KDE calculation failed: {e}. Using uniform coloring.")
-        ax.scatter(samples_pca[:, 0], samples_pca[:, 1], alpha=0.7, s=30, 
+        scatter = ax.scatter(samples_pca[:, 0], samples_pca[:, 1], alpha=0.7, s=30, 
                  edgecolor='k', linewidth=0.5)
     
     # Mark the projected center
@@ -698,5 +725,18 @@ def plot_pca_projection(samples: List[Union[Vector, np.ndarray, List]],
            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     
     plt.tight_layout()
-    plt.savefig(plot_dir / filename, dpi=300)
-    plt.close(fig)
+    try:
+        plt.savefig(plot_dir / filename, dpi=300)
+        print(f"Plot saved to {plot_dir / filename}")
+    except Exception as e:
+        print(f"Error saving plot: {e}")
+    finally:
+        plt.close(fig)_pca[:, 1], c=z, 
+                           cmap='viridis', alpha=0.7, s=30, 
+                           edgecolor='k', linewidth=0.5)
+        cbar = plt.colorbar(scatter, ax=ax, label='Point Density')
+        cbar.ax.tick_params(labelsize=10)
+    except Exception as e:
+        # Fallback if KDE fails
+        print(f"KDE calculation failed: {e}. Using uniform coloring.")
+        ax.scatter(samples_pca[:, 0], samples
