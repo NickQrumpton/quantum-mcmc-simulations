@@ -11,6 +11,18 @@ sns.set_style("whitegrid")
 sns.set_context("paper", font_scale=1.2)
 
 
+def get_plot_dir():
+    """Get the directory for saving plots with proper error handling."""
+    from pathlib import Path
+    
+    plot_dir = Path(__file__).resolve().parent.parent / "results/plots"
+    try:
+        plot_dir.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        print(f"Warning: Could not create plot directory: {e}")
+    return plot_dir
+
+
 def _to_numpy(samples: List[Union[Vector, np.ndarray, List]]) -> np.ndarray:
     """
     Convert SageMath vectors or lists to a NumPy array.
@@ -272,9 +284,8 @@ def plot_trace(samples: List[Union[Vector, np.ndarray, List]],
     samples_np = _to_numpy(samples)
     n_samples, n_dims = samples_np.shape
     
-    # Create the plot directory if it doesn't exist
-    plot_dir = Path("results/plots")
-    plot_dir.mkdir(parents=True, exist_ok=True)
+    # Get the plot directory
+    plot_dir = get_plot_dir()
     
     # Create the figure
     fig, axes = plt.subplots(n_dims, 1, figsize=(10, 3 * n_dims), sharex=True)
@@ -330,8 +341,13 @@ def plot_trace(samples: List[Union[Vector, np.ndarray, List]],
     if title:
         plt.subplots_adjust(top=0.95)  # Adjust for the title
     
-    plt.savefig(plot_dir / filename, dpi=300)
-    plt.close()
+    try:
+        plt.savefig(plot_dir / filename, dpi=300)
+        print(f"Plot saved to {plot_dir / filename}")
+    except Exception as e:
+        print(f"Error saving plot: {e}")
+    finally:
+        plt.close()
 
 
 def plot_autocorrelation(acf_by_dim: List[np.ndarray], 
@@ -369,9 +385,8 @@ def plot_autocorrelation(acf_by_dim: List[np.ndarray],
     
     n_dims = len(acf_by_dim)
     
-    # Create the plot directory if it doesn't exist
-    plot_dir = Path("results/plots")
-    plot_dir.mkdir(parents=True, exist_ok=True)
+    # Get the plot directory
+    plot_dir = get_plot_dir()
     
     # Create the figure
     fig, axes = plt.subplots(n_dims, 1, figsize=(10, 3 * n_dims), sharex=True)
@@ -429,8 +444,13 @@ def plot_autocorrelation(acf_by_dim: List[np.ndarray],
     if title:
         plt.subplots_adjust(top=0.95)  # Adjust for the title
     
-    plt.savefig(plot_dir / filename, dpi=300)
-    plt.close()
+    try:
+        plt.savefig(plot_dir / filename, dpi=300)
+        print(f"Plot saved to {plot_dir / filename}")
+    except Exception as e:
+        print(f"Error saving plot: {e}")
+    finally:
+        plt.close()
 
 
 def plot_acceptance_trace(accepts: List[bool], 
@@ -476,9 +496,8 @@ def plot_acceptance_trace(accepts: List[bool],
     # Convert to NumPy array
     accepts_arr = np.array(accepts, dtype=float)
     
-    # Create the plot directory if it doesn't exist
-    plot_dir = Path("results/plots")
-    plot_dir.mkdir(parents=True, exist_ok=True)
+    # Get the plot directory
+    plot_dir = get_plot_dir()
     
     # Calculate moving average
     cumsum = np.cumsum(np.insert(accepts_arr, 0, 0))
@@ -514,5 +533,10 @@ def plot_acceptance_trace(accepts: List[bool],
     
     # Finalize and save
     plt.tight_layout()
-    plt.savefig(plot_dir / filename, dpi=300)
-    plt.close()
+    try:
+        plt.savefig(plot_dir / filename, dpi=300)
+        print(f"Plot saved to {plot_dir / filename}")
+    except Exception as e:
+        print(f"Error saving plot: {e}")
+    finally:
+        plt.close()
