@@ -26,7 +26,7 @@ def _compute_normalization_constant(lattice_basis: Matrix, sigma: float, center:
         Approximation of the normalization constant Z
     """
     if discrete_gaussian_pdf is None:
-        from utils import discrete_gaussian_pdf
+        from imhk_sampler.utils import discrete_gaussian_pdf
     
     n_dims = lattice_basis.nrows()
     
@@ -138,7 +138,7 @@ def compute_total_variation_distance(samples: List[Vector],
     
     # Import discrete_gaussian_pdf if not provided
     if discrete_gaussian_pdf is None:
-        from utils import discrete_gaussian_pdf
+        from imhk_sampler.utils import discrete_gaussian_pdf
     
     # Set default center if not provided
     if center is None:
@@ -234,7 +234,7 @@ def compute_kl_divergence(samples: List[Vector],
     
     # Import discrete_gaussian_pdf if not provided
     if discrete_gaussian_pdf is None:
-        from utils import discrete_gaussian_pdf
+        from imhk_sampler.utils import discrete_gaussian_pdf
     
     # Set default center if not provided
     if center is None:
