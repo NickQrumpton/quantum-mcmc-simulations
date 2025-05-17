@@ -1,0 +1,47 @@
+# System files
+.DS_Store
+*.bak
+__pycache__/
+*.pyc
+*.pyo
+*.so
+
+# Environment
+env/
+venv/
+.env
+*.sh
+
+# Results and data (can be regenerated)
+results/
+data/
+logs/
+*.pkl
+*.pickle
+*.npy
+*.npz
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation build
+docs/_build/
+docs/_static/
+docs/_templates/
+
+# Testing
+.coverage
+.pytest_cache/
+htmlcov/
+
+# Temporary files
+*.tmp
+*.temp
+*~
