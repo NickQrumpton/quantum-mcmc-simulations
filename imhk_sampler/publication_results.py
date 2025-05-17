@@ -29,10 +29,29 @@ import seaborn as sns
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Union, Any
 from datetime import datetime
+import importlib.util
+
+# Check if SageMath is available
+have_sage = importlib.util.find_spec("sage") is not None
+
+if not have_sage:
+    print("\n" + "="*80)
+    print("ERROR: SageMath is required for this script.")
+    print("="*80)
+    print("Please install SageMath before running publication_results.py.")
+    print("Installation options:")
+    print("1. Using conda: conda install -c conda-forge sage")
+    print("2. Full installation from: https://doc.sagemath.org/html/en/installation/")
+    print("\nExiting script.")
+    sys.exit(1)
 
 # SageMath imports
-from sage.all import matrix, vector, RR, ZZ, QQ
-from sage.misc.prandom import set_random_seed
+try:
+    from sage.all import matrix, vector, RR, ZZ, QQ
+    from sage.misc.prandom import set_random_seed
+except ImportError:
+    print("Error importing SageMath modules. Please ensure SageMath is properly installed.")
+    sys.exit(1)
 
 # Import our IMHK sampler framework
 from imhk_sampler import (

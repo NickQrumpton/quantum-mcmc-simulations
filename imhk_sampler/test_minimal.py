@@ -18,8 +18,10 @@ import os
 import sys
 import traceback
 import time
+import subprocess
 from pathlib import Path
 import numpy as np
+import importlib.util
 
 # Create a simple step-by-step test framework
 class TestStep:
@@ -63,6 +65,29 @@ class TestStep:
         return success
 
 
+def check_sagemath_installation():
+    """Check if SageMath is installed and provide installation instructions if needed."""
+    # Check if sage module is available
+    sage_spec = importlib.util.find_spec("sage")
+    
+    if sage_spec is None:
+        print("\n" + "="*80)
+        print("SageMath NOT FOUND - Installation Required")
+        print("="*80)
+        print("The IMHK Sampler requires SageMath for lattice operations.")
+        print("\nInstallation Options:")
+        print("1. Using conda (recommended):")
+        print("   conda install -c conda-forge sagemath")
+        print("\n2. Using pip (partial installation, may have limitations):")
+        print("   pip install sagemath")
+        print("\n3. For a full installation, visit:")
+        print("   https://doc.sagemath.org/html/en/installation/index.html")
+        print("\nAfter installing SageMath, run this test again.")
+        print("="*80)
+        return False
+    
+    return True
+
 def test_sagemath_setup():
     """Test that SageMath is properly installed and configured."""
     test = TestStep(
@@ -70,6 +95,10 @@ def test_sagemath_setup():
         "Verify that SageMath is properly installed and can create matrices and vectors."
     )
     test.start()
+    
+    # First check if SageMath is installed
+    if not check_sagemath_installation():
+        return test.finish(False, ImportError("SageMath is not installed. Please install it using the instructions above."))
     
     try:
         # Import SageMath components
@@ -362,14 +391,25 @@ def run_all_tests():
     print(f"Python version: {sys.version}")
     print(f"Working directory: {os.getcwd()}")
     
-    # List of tests to run
-    tests = [
+    # Check if SageMath is installed first
+    sage_available = check_sagemath_installation()
+    
+    # List of all tests
+    all_tests = [
         test_sagemath_setup,
         test_directory_setup,
         test_klein_sampler,
         test_imhk_sampler,
         test_full_pipeline
     ]
+    
+    # Filter tests based on SageMath availability
+    if not sage_available:
+        print("\nSKIPPING SageMath-dependent tests due to missing SageMath installation.")
+        # Only run directory setup test which doesn't depend on SageMath
+        tests = [test_directory_setup]
+    else:
+        tests = all_tests
     
     # Run tests and collect results
     results = []
@@ -383,16 +423,27 @@ def run_all_tests():
     print("="*80)
     
     all_passed = True
+    tests_run = 0
     for name, passed in results:
+        tests_run += 1
         if passed:
             print(f"✓ PASS: {name}")
         else:
             print(f"✗ FAIL: {name}")
             all_passed = False
     
+    # Print skipped tests if any
+    if not sage_available:
+        skipped_tests = [t.__name__ for t in all_tests if t != test_directory_setup]
+        for name in skipped_tests:
+            print(f"⚠ SKIP: {name} (requires SageMath)")
+    
     # Final verdict
     print("\n" + "="*80)
-    if all_passed:
+    if not sage_available:
+        print("\n⚠️ PARTIAL TEST RUN - SAGEMATH REQUIRED FOR FULL TESTING ⚠️")
+        print("\nPlease install SageMath and run the tests again for a complete evaluation.")
+    elif all_passed:
         print("\n✓✓✓ ALL TESTS PASSED ✓✓✓")
         print("\nThe IMHK Sampler framework is functioning correctly!")
     else:
@@ -401,7 +452,7 @@ def run_all_tests():
     
     print("\n" + "="*80)
     
-    return all_passed
+    return all_passed and sage_available  # Return true only if all tests passed and SageMath is available
 
 
 if __name__ == "__main__":

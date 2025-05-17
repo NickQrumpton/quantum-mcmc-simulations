@@ -1,0 +1,69 @@
+{
+    "meta": {
+        "title": "IMHK vs Klein Sampler: Comprehensive Research Results",
+        "date": "2025-05-17",
+        "description": "Research findings on Independent Metropolis-Hastings-Klein algorithm for high-quality discrete Gaussian sampling over lattices"
+    },
+    "key_findings": [
+        "IMHK sampling achieves better statistical quality than Klein even in well-conditioned lattices",
+        "For ill-conditioned lattices, IMHK sampling shows up to 69.4% improvement in sampling quality over Klein",
+        "IMHK demonstrates dramatic quality improvements (>50%) for challenging lattice bases",
+        "IMHK achieves 5.34x effective sampling efficiency compared to Klein for 4D_identity configuration"
+    ],
+    "baseline_comparison": {
+        "acceptance_rate": 0.99,
+        "imhk_tv_distance": 0.03195069032162148,
+        "klein_tv_distance": 0.0476586304305082,
+        "tv_ratio": 0.6704072280929115,
+        "speedup": 3.2624581684766847
+    },
+    "ill_conditioned_analysis": {
+        "tested_sigmas": [
+            1.0,
+            2.0,
+            3.0,
+            5.0
+        ],
+        "tv_ratios": [
+            [
+                1.0,
+                0.40827636207396123
+            ],
+            [
+                2.0,
+                0.3612697779712939
+            ],
+            [
+                3.0,
+                0.35727054892868215
+            ],
+            [
+                5.0,
+                0.30609028764662
+            ]
+        ],
+        "best_sigma": 5.0,
+        "best_ratio": 0.30609028764662
+    },
+    "parameter_sweep_insights": {},
+    "convergence_analysis": {
+        "ess_efficiency_by_config": {
+            "2D_identity": 2.660898520160605,
+            "2D_ill-conditioned": 1.9093771181513217,
+            "3D_identity": 4.159981538493785,
+            "3D_ill-conditioned": 2.3871634254638847,
+            "4D_identity": 5.33905051325977,
+            "4D_ill-conditioned": 4.042529751045515
+        },
+        "best_config": "4D_identity",
+        "best_efficiency": 5.33905051325977,
+        "worst_config": "2D_ill-conditioned",
+        "worst_efficiency": 1.9093771181513217
+    },
+    "recommendations": [
+        "Use IMHK sampling for ill-conditioned lattices where quality is critical",
+        "For well-conditioned lattices with orthogonal basis vectors, Klein sampling may offer a better speed-quality trade-off",
+        "Higher \u03c3 values generally improve IMHK acceptance rates and overall sampling quality",
+        "Consider the effective sample size when comparing sampling efficiency, not just raw sampling rate"
+    ]
+}

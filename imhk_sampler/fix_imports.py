@@ -66,7 +66,7 @@ FUNCTION_IMPORT_PATTERN = r'^\s+from\s+(?:imhk_sampler\.)?({0})\s+import\s+'
 # Template for dynamic import function (added if not present)
 DYNAMIC_IMPORT_FUNCTION = """
 def _get_function(module_name, function_name):
-    """Dynamically import a function to avoid circular dependencies."""
+    \"\"\"Dynamically import a function to avoid circular dependencies.\"\"\"
     import importlib
     
     # Full module path
@@ -300,9 +300,8 @@ def main():
     if args.dry_run:
         logger.info("Running in DRY RUN mode - no files will be modified")
     
-    # Find the imhk_sampler directory
-    script_dir = Path(__file__).resolve().parent
-    imhk_dir = script_dir / 'imhk_sampler'
+    # Use the current directory (imhk_sampler)
+    imhk_dir = Path(__file__).resolve().parent
     
     if not imhk_dir.exists() or not imhk_dir.is_dir():
         logger.error(f"imhk_sampler directory not found at {imhk_dir}")
