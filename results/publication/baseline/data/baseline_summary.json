@@ -1,0 +1,26 @@
+{
+    "experiment": "Baseline 2D Identity Lattice",
+    "parameters": {
+        "dimension": 2,
+        "sigma": 3.0,
+        "basis_type": "identity",
+        "num_samples": 5000
+    },
+    "imhk_results": {
+        "acceptance_rate": 0.99,
+        "tv_distance": 0.03195069032162148,
+        "kl_divergence": 0.038340828385945776,
+        "ess": 5010.929012409533,
+        "time": 0.21295377076201386
+    },
+    "klein_results": {
+        "tv_distance": 0.0476586304305082,
+        "kl_divergence": 0.057190356516609836,
+        "time": 0.6947527689304435
+    },
+    "comparison": {
+        "time_ratio": 0.30651734010337445,
+        "tv_ratio": 0.6704072280929115,
+        "kl_ratio": 0.6704072280929114
+    }
+}
