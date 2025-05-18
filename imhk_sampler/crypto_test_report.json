@@ -1,0 +1,87 @@
+{
+  "summary": {
+    "total_tests": 7,
+    "successful": 7,
+    "failed": 0,
+    "total_time": 8.13442087173462
+  },
+  "results": [
+    {
+      "basis_type": "identity",
+      "dimension": 4,
+      "status": "success",
+      "start_time": 1747599016.14204,
+      "basis_created": true,
+      "sigma": 2.9195515319296375,
+      "samples_generated": 50,
+      "acceptance_rate": 0.44,
+      "elapsed_time": 1.3254258632659912
+    },
+    {
+      "basis_type": "identity",
+      "dimension": 8,
+      "status": "success",
+      "start_time": 1747599017.467701,
+      "basis_created": true,
+      "sigma": 3.0669730269768105,
+      "samples_generated": 50,
+      "acceptance_rate": 0.3333333333333333,
+      "elapsed_time": 0.04551196098327637
+    },
+    {
+      "basis_type": "q-ary",
+      "dimension": 8,
+      "status": "success",
+      "start_time": 1747599017.513442,
+      "basis_created": true,
+      "sigma": 1.0,
+      "samples_generated": 50,
+      "acceptance_rate": 1.0,
+      "elapsed_time": 0.08726882934570312
+    },
+    {
+      "basis_type": "q-ary",
+      "dimension": 16,
+      "status": "success",
+      "start_time": 1747599017.6009338,
+      "basis_created": true,
+      "sigma": 1.0,
+      "samples_generated": 50,
+      "acceptance_rate": 1.0,
+      "elapsed_time": 0.3724982738494873
+    },
+    {
+      "basis_type": "NTRU",
+      "dimension": 512,
+      "status": "success",
+      "start_time": 1747599017.973702,
+      "basis_created": true,
+      "sigma": 5.542788107081129,
+      "samples_generated": 50,
+      "acceptance_rate": 0.0,
+      "elapsed_time": 0.08286190032958984
+    },
+    {
+      "basis_type": "PrimeCyclotomic",
+      "dimension": 683,
+      "status": "success",
+      "start_time": 1747599018.0568478,
+      "basis_created": true,
+      "sigma": 1.848648154733615,
+      "samples_generated": 50,
+      "acceptance_rate": 0.0,
+      "elapsed_time": 0.10992622375488281
+    },
+    {
+      "basis_type": "q-ary",
+      "dimension": 32,
+      "status": "success",
+      "start_time": 1747599018.167098,
+      "basis_created": true,
+      "sigma": 1.0,
+      "samples_generated": 50,
+      "acceptance_rate": 1.0,
+      "elapsed_time": 6.109021902084351
+    }
+  ]
+}

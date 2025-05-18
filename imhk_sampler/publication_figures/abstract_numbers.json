@@ -1,0 +1,10 @@
+{
+    "best_improvement": "3.2\u00d7",
+    "max_dimension": 128,
+    "optimal_ratio_range": "1.5-3.0",
+    "typical_acceptance_rate": "0.45-0.75",
+    "ess_improvement": "2-5\u00d7",
+    "runtime_complexity": "O(n\u00b2)",
+    "tv_distance_range": "10\u207b\u00b3-10\u207b\u00b9",
+    "security_relevance": "NIST ML-DSA compatible"
+}

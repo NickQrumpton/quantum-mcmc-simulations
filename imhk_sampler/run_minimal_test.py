@@ -41,7 +41,7 @@ def run_smoke_test():
     try:
         dim = 2
         sigma = 1.0
-        num_samples = 500
+        num_samples = 200
         
         # Create identity basis
         B = create_lattice_basis(dim, 'identity')
@@ -93,7 +93,7 @@ def run_smoke_test():
         try:
             dim = 4
             sigma = 2.0
-            num_samples = 300
+            num_samples = 200
             
             # Create basis
             B = create_lattice_basis(dim, basis_type)

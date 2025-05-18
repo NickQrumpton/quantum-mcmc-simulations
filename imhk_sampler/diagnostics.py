@@ -57,7 +57,7 @@ def _to_numpy(samples: List[Union[Vector, np.ndarray, List]]) -> np.ndarray:
     return result
 
 
-def compute_autocorrelation(samples: List[Union[Vector, np.ndarray, List]], 
+def compute_autocorrelation(samples: Union[List[Union[Vector, np.ndarray, List]], np.ndarray], 
                            lag: int = 50) -> List[np.ndarray]:
     """
     Compute the autocorrelation of a chain of samples up to a given lag.
@@ -73,7 +73,7 @@ def compute_autocorrelation(samples: List[Union[Vector, np.ndarray, List]],
     dependent, potentially leading to biased estimates for cryptographic parameters.
     
     Args:
-        samples: List of sample vectors (SageMath vectors, NumPy arrays, or lists)
+        samples: List of sample vectors or NumPy array
         lag: Maximum lag to compute autocorrelation for (must be positive)
         
     Returns:
@@ -84,13 +84,21 @@ def compute_autocorrelation(samples: List[Union[Vector, np.ndarray, List]],
         TypeError: If samples elements are not of a supported type
     """
     # Input validation
-    if not samples:
+    if isinstance(samples, list) and not samples:
         raise ValueError("Empty samples list provided")
     if lag <= 0:
         raise ValueError("Lag must be positive")
     
-    # Convert to NumPy array
-    samples_np = _to_numpy(samples)
+    # Convert to NumPy array if needed
+    if isinstance(samples, np.ndarray):
+        samples_np = samples
+    else:
+        samples_np = _to_numpy(samples)
+    
+    # Handle 1D case
+    if len(samples_np.shape) == 1:
+        samples_np = samples_np.reshape(-1, 1)
+    
     n_samples, n_dims = samples_np.shape
     
     # Ensure lag doesn't exceed sample size
@@ -184,7 +192,7 @@ def compute_initial_monotone_sequence(acf: np.ndarray) -> Tuple[int, np.ndarray]
     return effective_cutoff, gamma
 
 
-def compute_ess(samples: List[Union[Vector, np.ndarray, List]]) -> List[float]:
+def compute_ess(samples: Union[List[Union[Vector, np.ndarray, List]], np.ndarray]) -> List[float]:
     """
     Compute the Effective Sample Size (ESS) for each dimension of the samples.
     
@@ -201,7 +209,7 @@ def compute_ess(samples: List[Union[Vector, np.ndarray, List]]) -> List[float]:
     - Valid evaluation of sampling algorithms used in cryptographic protocols
     
     Args:
-        samples: List of sample vectors (SageMath vectors, NumPy arrays, or lists)
+        samples: List of sample vectors or NumPy array
         
     Returns:
         A list of ESS values, one for each dimension
@@ -211,18 +219,26 @@ def compute_ess(samples: List[Union[Vector, np.ndarray, List]]) -> List[float]:
         TypeError: If samples elements are not of a supported type
     """
     # Input validation
-    if not samples:
+    if isinstance(samples, list) and not samples:
         raise ValueError("Empty samples list provided")
     
-    # Convert to NumPy array
-    samples_np = _to_numpy(samples)
+    # Convert to NumPy array if needed
+    if isinstance(samples, np.ndarray):
+        samples_np = samples
+    else:
+        samples_np = _to_numpy(samples)
+    
+    # Handle 1D case
+    if len(samples_np.shape) == 1:
+        samples_np = samples_np.reshape(-1, 1)
+    
     n_samples, n_dims = samples_np.shape
     
     # Determine max lag (recommended: min(n/5, 50))
-    max_lag = min(50, n_samples // 5)
+    max_lag = max(1, min(50, n_samples // 5))
     
     # Compute autocorrelation for all dimensions
-    acf_by_dim = compute_autocorrelation(samples, max_lag)
+    acf_by_dim = compute_autocorrelation(samples_np, max_lag)
     
     # Compute ESS for each dimension
     ess_values = []
@@ -235,7 +251,7 @@ def compute_ess(samples: List[Union[Vector, np.ndarray, List]]) -> List[float]:
         
         # Calculate ESS using the appropriate autocorrelation sum
         # ESS = n / (1 + 2*∑ρ(k))
-        if len(gamma) > 0:
+        if len(gamma) > 0 and gamma.size > 0:  # Fixed: check both length and size
             # Sum of modified gamma values already accounts for pairs
             rho_sum = np.sum(gamma)
             ess = n_samples / (1 + 2 * rho_sum)
@@ -248,7 +264,7 @@ def compute_ess(samples: List[Union[Vector, np.ndarray, List]]) -> List[float]:
     return ess_values
 
 
-def plot_trace(samples: List[Union[Vector, np.ndarray, List]], 
+def plot_trace(samples: Union[List[Union[Vector, np.ndarray, List]], np.ndarray], 
               filename: str, 
               title: Optional[str] = None) -> None:
     """
@@ -265,7 +281,7 @@ def plot_trace(samples: List[Union[Vector, np.ndarray, List]],
     - Quality of the sampling procedure for generating cryptographic keys or signatures
     
     Args:
-        samples: List of sample vectors (SageMath vectors, NumPy arrays, or lists)
+        samples: List of sample vectors or NumPy array
         filename: Filename to save the plot (without path)
         title: Optional title for the plot
         
@@ -277,11 +293,19 @@ def plot_trace(samples: List[Union[Vector, np.ndarray, List]],
         TypeError: If samples elements are not of a supported type
     """
     # Input validation
-    if not samples:
+    if isinstance(samples, list) and not samples:
         raise ValueError("Empty samples list provided")
     
-    # Convert to NumPy array
-    samples_np = _to_numpy(samples)
+    # Convert to NumPy array if needed
+    if isinstance(samples, np.ndarray):
+        samples_np = samples
+    else:
+        samples_np = _to_numpy(samples)
+    
+    # Handle 1D case
+    if len(samples_np.shape) == 1:
+        samples_np = samples_np.reshape(-1, 1)
+    
     n_samples, n_dims = samples_np.shape
     
     # Get the plot directory
@@ -294,6 +318,9 @@ def plot_trace(samples: List[Union[Vector, np.ndarray, List]],
     
     # Set the color palette
     colors = sns.color_palette("muted")
+    
+    # Compute ESS once for all dimensions
+    ess_values = compute_ess(samples_np)
     
     for dim in range(n_dims):
         # Extract this dimension's values
@@ -323,7 +350,7 @@ def plot_trace(samples: List[Union[Vector, np.ndarray, List]],
         axes[dim].text(0.02, 0.95, 
                       f'Mean: {mean_val:.2f}\nStd: {std_val:.2f}\n'
                       f'Min: {min_val:.2f}\nMax: {max_val:.2f}\n'
-                      f'ESS: {compute_ess([samples[i] for i in range(n_samples)])[dim]:.1f}', 
+                      f'ESS: {ess_values[dim]:.1f}', 
                       transform=axes[dim].transAxes, 
                       verticalalignment='top',
                       bbox=dict(boxstyle='round', facecolor='white', alpha=0.9))
@@ -350,7 +377,7 @@ def plot_trace(samples: List[Union[Vector, np.ndarray, List]],
         plt.close()
 
 
-def plot_autocorrelation(acf_by_dim: List[np.ndarray], 
+def plot_autocorrelation(samples: Union[List[Union[Vector, np.ndarray, List]], np.ndarray], 
                         filename: str, 
                         title: Optional[str] = None,
                         ess_values: Optional[List[float]] = None) -> None:
@@ -368,7 +395,7 @@ def plot_autocorrelation(acf_by_dim: List[np.ndarray],
     - Determine if the algorithm needs longer burn-in periods or thinning
     
     Args:
-        acf_by_dim: List of autocorrelation functions for each dimension
+        samples: Array of samples or list of autocorrelation functions
         filename: Filename to save the plot (without path)
         title: Optional title for the plot
         ess_values: Optional list of effective sample sizes to include in the plot
@@ -377,9 +404,33 @@ def plot_autocorrelation(acf_by_dim: List[np.ndarray],
         None (saves plot to file)
         
     Raises:
-        ValueError: If acf_by_dim is empty
+        ValueError: If samples is empty
     """
-    # Input validation
+    # Determine if we have samples or pre-computed ACF
+    if isinstance(samples, list) and len(samples) > 0 and isinstance(samples[0], np.ndarray):
+        # Pre-computed ACF
+        acf_by_dim = samples
+    else:
+        # Compute ACF from samples
+        if isinstance(samples, list) and not samples:
+            raise ValueError("Empty samples list provided")
+        
+        # Get max lag
+        if isinstance(samples, np.ndarray):
+            samples_np = samples
+        else:
+            samples_np = _to_numpy(samples)
+        
+        if len(samples_np.shape) == 1:
+            samples_np = samples_np.reshape(-1, 1)
+        
+        n_samples = samples_np.shape[0]
+        max_lag = max(1, min(50, n_samples // 5))
+        
+        # Compute autocorrelation
+        acf_by_dim = compute_autocorrelation(samples, max_lag)
+    
+    # Validation
     if not acf_by_dim:
         raise ValueError("Empty autocorrelation list provided")
     
@@ -420,10 +471,13 @@ def plot_autocorrelation(acf_by_dim: List[np.ndarray],
             ess = ess_values[dim]
         else:
             # Compute ESS using the autocorrelation function
-            n_samples = len(acf_by_dim[dim])
+            n_samples = 1000  # Default assumption
             _, gamma = compute_initial_monotone_sequence(acf_by_dim[dim])
-            rho_sum = np.sum(gamma) if len(gamma) > 0 else 0
-            ess = n_samples / (1 + 2 * rho_sum)
+            if len(gamma) > 0 and gamma.size > 0:  # Fixed: check both
+                rho_sum = np.sum(gamma)
+                ess = n_samples / (1 + 2 * rho_sum)
+            else:
+                ess = n_samples
         
         axes[dim].text(0.7, 0.95, 
                       f'ESS: {ess:.1f}\nCutoff lag: {cutoff_lag}', 
@@ -453,7 +507,7 @@ def plot_autocorrelation(acf_by_dim: List[np.ndarray],
         plt.close()
 
 
-def plot_acceptance_trace(accepts: List[bool], 
+def plot_acceptance_trace(accepts: Union[List[bool], np.ndarray], 
                          filename: str, 
                          window_size: int = 100,
                          title: Optional[str] = "IMHK Acceptance Rate Over Time") -> None:
@@ -472,7 +526,7 @@ def plot_acceptance_trace(accepts: List[bool],
     - Diagnose issues with sampling algorithms used in lattice-based schemes
     
     Args:
-        accepts: List of booleans indicating acceptance
+        accepts: List or array of booleans indicating acceptance
         filename: Filename to save the plot (without path)
         window_size: Size of the moving window (must be positive and smaller than the length of accepts)
         title: Optional title for the plot
@@ -484,17 +538,20 @@ def plot_acceptance_trace(accepts: List[bool],
         ValueError: If accepts is empty or window_size is inappropriate
     """
     # Input validation
-    if not accepts:
+    if isinstance(accepts, list) and not accepts:
         raise ValueError("Empty accepts list provided")
+    
+    # Convert to NumPy array
+    accepts_arr = np.array(accepts, dtype=float)
+    
+    if accepts_arr.size == 0:  # Fixed: use .size instead of checking array
+        raise ValueError("Empty accepts array provided")
     
     if not isinstance(window_size, int) or window_size <= 0:
         raise ValueError("window_size must be a positive integer")
     
-    if window_size >= len(accepts):
-        window_size = max(len(accepts) // 10, 1)  # Default to 1/10 of the data
-    
-    # Convert to NumPy array
-    accepts_arr = np.array(accepts, dtype=float)
+    if window_size >= len(accepts_arr):
+        window_size = max(len(accepts_arr) // 10, 1)  # Default to 1/10 of the data
     
     # Get the plot directory
     plot_dir = get_plot_dir()

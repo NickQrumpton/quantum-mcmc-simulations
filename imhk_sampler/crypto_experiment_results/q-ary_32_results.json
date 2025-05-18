@@ -1,0 +1,15 @@
+{
+  "basis_type": "q-ary",
+  "dimension": 32,
+  "sigma_ratio": 2.0,
+  "timestamp": "2025-05-18T19:32:18.809534",
+  "smoothing_parameter": 6.718290140281819e-05,
+  "sigma": 0.00013436580280563637,
+  "imhk_acceptance_rate": 1.0,
+  "imhk_samples_shape": [
+    500,
+    32
+  ],
+  "status": "failed",
+  "error": "too many values to unpack (expected 2)"
+}

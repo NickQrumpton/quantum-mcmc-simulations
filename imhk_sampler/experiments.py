@@ -1,147 +1,93 @@
+"""
+Core experimental framework for lattice-based discrete Gaussian samplers with cryptographic applications.
+
+This module provides comprehensive tools for running experiments with discrete Gaussian samplers
+over lattices, with a focus on cryptographically relevant parameter ranges and metrics. The
+experiments are designed to validate the IMHK sampler against Klein's algorithm and establish
+its advantages in higher dimensions and challenging lattice structures.
+"""
+
+# Control sklearn usage
+USE_SKLEARN = False
+
+from sage.all import *
 import numpy as np
-import matplotlib.pyplot as plt
 import time
 import pickle
-from sage.all import *
-from typing import Dict, List, Tuple, Optional, Union, Any
-from pathlib import Path
-import multiprocessing as mp
-from functools import partial
+import json
 import os
+import sys
 import logging
 
-# Create necessary directories
-base_dir = Path(__file__).resolve().parent.parent
-results_dir = base_dir / "results"
-logs_dir = results_dir / "logs"
-plots_dir = results_dir / "plots"
+# Import create_lattice_basis from utils
+from .utils import create_lattice_basis
 
-for directory in [results_dir, logs_dir, plots_dir]:
-    directory.mkdir(parents=True, exist_ok=True)
+# Add parent directory to path to ensure imports work
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-# Configure logging with proper path resolution
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(logs_dir / "experiments.log"),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger("lattice_experiments")
+# Configure matplotlib to avoid backend issues
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
+# Configure constants
+DEFAULT_RESULTS_DIR = "results/"
+DEFAULT_PLOTS_DIR = "results/plots/"
+DEFAULT_DATA_DIR = "results/data/"
+DEFAULT_LOGS_DIR = "results/logs/"
 
-def validate_basis_type(basis_type: str) -> bool:
+# Module level directories
+results_dir = DEFAULT_RESULTS_DIR
+plots_dir = DEFAULT_PLOTS_DIR
+data_dir = DEFAULT_DATA_DIR
+logs_dir = DEFAULT_LOGS_DIR
+
+def init_directories(base_dir=None):
+    """Initialize output directories for results, plots, data, and logs."""
+    global results_dir, plots_dir, data_dir, logs_dir
+    
+    if base_dir:
+        results_dir = base_dir
+    else:
+        results_dir = DEFAULT_RESULTS_DIR
+    
+    plots_dir = os.path.join(results_dir, "plots")
+    data_dir = os.path.join(results_dir, "data")
+    logs_dir = os.path.join(results_dir, "logs")
+    
+    # Create directories if they don't exist
+    for dir_path in [results_dir, plots_dir, data_dir, logs_dir]:
+        os.makedirs(dir_path, exist_ok=True)
+
+# Initialize directories
+init_directories()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('lattice_experiments')
+
+# Function moved to utils.py
+
+def validate_basis_type(basis_type):
+    """Validate that a basis type is supported."""
+    supported_types = ['identity', 'ill-conditioned', 'skewed', 'q-ary'] 
+    return basis_type in supported_types
+
+def run_experiment(dim, sigma, num_samples, basis_type='identity', compare_with_klein=True, center=None,
+                  plot_results=True, save_results=True):
     """
-    Validate that the basis type is supported.
+    Run a complete discrete Gaussian sampling experiment comparing IMHK and Klein samplers.
     
-    Args:
-        basis_type: String specifying the lattice basis type
-        
-    Returns:
-        True if valid, False otherwise
-    """
-    return basis_type in ['identity', 'skewed', 'ill-conditioned']
-
-
-def create_lattice_basis(dim: int, basis_type: str) -> Matrix:
-    """
-    Create a lattice basis matrix of the specified type.
+    This function serves as the primary experimental framework for evaluating
+    discrete Gaussian samplers in cryptographically relevant scenarios.
     
-    Args:
-        dim: Dimension of the lattice (must be ≥ 2)
-        basis_type: Type of lattice basis to create
-        
-    Returns:
-        The lattice basis matrix
-        
-    Raises:
-        ValueError: If basis_type is not recognized or dim < 2
-    """
-    if not isinstance(dim, (int, Integer)) or dim < 2:
-        raise ValueError(f"Dimension must be an integer ≥ 2, got {dim}")
-    
-    if not validate_basis_type(basis_type):
-        raise ValueError(f"Unknown basis type: {basis_type}. Valid options are 'identity', 'skewed', 'ill-conditioned'")
-    
-    # Create the lattice basis according to type
-    if basis_type == 'identity':
-        # Standard orthogonal basis - ideal case
-        B = matrix.identity(RR, dim)
-    elif basis_type == 'skewed':
-        # Basis with non-orthogonal vectors - common in cryptographic applications
-        B = matrix.identity(RR, dim)
-        B[0, 1] = 1.5  # Add some skew to simulate non-orthogonality
-        if dim >= 3:
-            B[0, 2] = 0.5  # Additional skew in higher dimensions
-    elif basis_type == 'ill-conditioned':
-        # Basis with poor conditioning - challenging for sampling algorithms
-        # Models cases where some lattice vectors are much longer than others
-        B = matrix.identity(RR, dim)
-        B[0, 0] = 10.0  # First vector is much longer
-        B[1, 1] = 0.1   # Second vector is much shorter
-    
-    return B
-
-
-def calculate_smoothing_parameter(dim: int, epsilon: float = 0.01) -> RealNumber:
-    """
-    Calculate the smoothing parameter for a lattice.
-    
-    Mathematical Context:
-    The smoothing parameter η_ε(Λ) is a fundamental concept in lattice-based cryptography.
-    It represents the Gaussian parameter at which the discrete Gaussian distribution over
-    the dual lattice Λ* appears nearly uniform modulo the lattice.
-    
-    For an identity basis, the smoothing parameter is approximated as:
-    η_ε(Λ) ≈ sqrt(ln(2n/ε)/π)
-    
-    Where:
-    - n is the lattice dimension
-    - ε is a small constant, typically 2^(-n)
-    
-    Cryptographic Relevance:
-    In lattice-based cryptography, sampling with σ > η_ε(Λ) ensures statistical
-    properties required for security proofs in schemes like:
-    - Ring-LWE encryption
-    - Lattice-based signature schemes
-    - Trapdoor functions
-    
-    Args:
-        dim: Dimension of the lattice
-        epsilon: Small constant (default: 0.01)
-        
-    Returns:
-        The approximate smoothing parameter
-    """
-    return sqrt(log(2*dim/epsilon)/pi)
-
-
-def run_experiment(
-    dim: int, 
-    sigma: float, 
-    num_samples: int, 
-    basis_type: str = 'identity', 
-    compare_with_klein: bool = True, 
-    center: Optional[Union[Vector, List[float]]] = None
-) -> Dict[str, Any]:
-    """
-    Run a complete experiment with IMHK sampling and analysis.
-    
-    Mathematical Context:
-    This function evaluates the quality of discrete Gaussian sampling over lattices
-    by comparing the Independent Metropolis-Hastings-Klein (IMHK) algorithm with
-    Klein's algorithm. The quality is assessed using:
-    - Total Variation distance to the ideal distribution
-    - KL divergence to measure information-theoretic similarity
-    - Effective Sample Size (ESS) to quantify the independence of samples
-    
-    Cryptographic Relevance:
-    Discrete Gaussian sampling over lattices is fundamental to lattice-based cryptography:
-    - Used in signature schemes (e.g., FALCON, CRYSTALS-Dilithium)
-    - Essential for key generation in encryption schemes
-    - Critical for security proofs and concrete security parameters
-    - Affects resistance to side-channel attacks
+    Cryptographic Context:
+    The discrete Gaussian distribution is fundamental to lattice-based cryptography,
+    appearing in schemes like:
+    - Learning With Errors (LWE) and Ring-LWE
+    - NTRU-based encryption
+    - Hash-and-sign signatures (FALCON)
+    - IBE and ABE constructions
     
     The ratio σ/η (Gaussian parameter to smoothing parameter) is crucial:
     - σ/η > 1: Ensures statistical properties required for security
@@ -161,11 +107,11 @@ def run_experiment(
     Raises:
         ValueError: If input parameters are invalid
     """
-    # Import required functions with proper module paths
-    from imhk_sampler.samplers import imhk_sampler, klein_sampler
-    from imhk_sampler.diagnostics import plot_trace, plot_autocorrelation, plot_acceptance_trace, compute_autocorrelation, compute_ess
-    from imhk_sampler.visualization import plot_2d_samples, plot_3d_samples, plot_2d_projections, plot_pca_projection
-    from imhk_sampler.stats import compute_total_variation_distance, compute_kl_divergence
+    # Import required functions
+    from samplers import imhk_sampler, klein_sampler, imhk_sampler_wrapper, klein_sampler_wrapper
+    from diagnostics import plot_trace, plot_autocorrelation, plot_acceptance_trace, compute_autocorrelation, compute_ess
+    from visualization import plot_2d_samples, plot_3d_samples, plot_2d_projections
+    from stats import compute_total_variation_distance, compute_kl_divergence
     
     # Input validation
     if not isinstance(dim, (int, Integer)) or dim < 2:
@@ -185,633 +131,594 @@ def run_experiment(
     
     # Set up the center
     if center is None:
-        center = vector(RR, [0] * dim)
+        center = vector(RDF, [0] * dim)
     else:
         # If center is a list, convert to SageMath vector
         if isinstance(center, list):
             if len(center) != dim:
                 raise ValueError(f"Center dimension ({len(center)}) must match lattice dimension ({dim})")
-            center = vector(RR, center)
+            center = vector(RDF, center)
         elif isinstance(center, Vector):
-            if len(center) != dim:
-                raise ValueError(f"Center dimension ({len(center)}) must match lattice dimension ({dim})")
+            # Ensure correct field type
+            center = vector(RDF, center)
         else:
-            raise TypeError(f"Center must be a list or SageMath vector, got {type(center)}")
+            raise ValueError(f"Center must be None, list, or SageMath vector, got {type(center)}")
     
     # Create the lattice basis
-    B = create_lattice_basis(dim, basis_type)
+    lattice_basis = create_lattice_basis(dim, basis_type)
     
-    # Create a unique experiment name
-    experiment_name = f"dim{dim}_sigma{sigma}_{basis_type}"
-    if any(c != 0 for c in center):
-        experiment_name += f"_center{'_'.join(str(float(c)) for c in center)}"
+    # Experiment name for file outputs
+    experiment_name = f"{basis_type}_{dim}d_{float(sigma):.3g}"
     
-    # Calculate smoothing parameter for reference
-    epsilon = 0.01  # A small constant
-    smoothing_param = calculate_smoothing_parameter(dim, epsilon)
-    
-    logger.info(f"Running experiment: dim={dim}, sigma={sigma}, basis={basis_type}")
-    logger.info(f"Smoothing parameter η_{epsilon}(Λ) ≈ {smoothing_param:.4f} for reference")
-    logger.info(f"σ/η ratio: {sigma/smoothing_param:.4f}")
+    logger.info(f"Starting experiment: {experiment_name}")
+    logger.info(f"Parameters: dim={dim}, sigma={sigma}, samples={num_samples}, basis={basis_type}")
+    logger.info(f"Center: {center}")
     
     # Run IMHK sampler
-    burn_in = min(5000, num_samples)  # Use appropriate burn-in
-    start_time = time.time()
-    try:
-        imhk_samples, acceptance_rate, all_samples, all_accepts = imhk_sampler(
-            B, sigma, num_samples, center, burn_in=burn_in)
-        imhk_time = time.time() - start_time
-        logger.info(f"IMHK sampling completed in {imhk_time:.2f} seconds, acceptance rate: {acceptance_rate:.4f}")
-    except Exception as e:
-        logger.error(f"IMHK sampling failed: {str(e)}")
-        raise
+    logger.info("Running IMHK sampler...")
+    imhk_start = time.time()
     
-    # Convert sample lists to NumPy arrays for more efficient processing
-    imhk_samples_np = np.array([[float(x_i) for x_i in x] for x in imhk_samples])
+    # Import the new wrapper function
+    from samplers import imhk_sampler_wrapper
     
-    # Run Klein sampler for comparison if requested
-    klein_samples = None
-    klein_time = None
-    if compare_with_klein:
-        start_time = time.time()
-        try:
-            # Use list comprehension for Klein sampling
-            klein_samples = [klein_sampler(B, sigma, center) for _ in range(num_samples)]
-            klein_time = time.time() - start_time
-            logger.info(f"Klein sampling completed in {klein_time:.2f} seconds")
-            
-            # Convert to NumPy for efficiency
-            klein_samples_np = np.array([[float(x_i) for x_i in x] for x in klein_samples])
-        except Exception as e:
-            logger.error(f"Klein sampling failed: {str(e)}")
-            logger.warning("Continuing without Klein comparison")
-            compare_with_klein = False
+    # Use the wrapper that handles different basis types
+    imhk_samples, imhk_metadata = imhk_sampler_wrapper(
+        basis_info=lattice_basis,
+        sigma=sigma,
+        num_samples=num_samples,
+        center=center,
+        burn_in=1000,  # Standard burn-in
+        basis_type=basis_type
+    )
     
-    # Run diagnostics and create visualizations
-    try:
-        # Analyze acceptance rate over time
-        plot_acceptance_trace(all_accepts, f"acceptance_trace_{experiment_name}.png")
-        
-        # Trace plots
-        plot_trace(imhk_samples, f"trace_imhk_{experiment_name}.png", 
-                f"IMHK Sample Trace (σ={sigma}, {basis_type} basis)")
-        
-        # Autocorrelation
-        acf_by_dim = compute_autocorrelation(imhk_samples)
-        plot_autocorrelation(acf_by_dim, f"acf_imhk_{experiment_name}.png", 
-                          f"IMHK Autocorrelation (σ={sigma}, {basis_type} basis)")
-        
-        # Effective Sample Size
-        ess_values = compute_ess(imhk_samples)
-        logger.info(f"IMHK Effective Sample Size: {ess_values}")
-        
-        # Visualization based on dimension
-        if dim == 2:
-            plot_2d_samples(imhk_samples, sigma, f"samples_imhk_{experiment_name}.png", 
-                         B, f"IMHK Samples (σ={sigma}, {basis_type} basis)", center)
-            if compare_with_klein:
-                plot_2d_samples(klein_samples, sigma, f"samples_klein_{experiment_name}.png", 
-                             B, f"Klein Samples (σ={sigma}, {basis_type} basis)", center)
-        elif dim == 3:
-            plot_3d_samples(imhk_samples, sigma, f"samples_imhk_{experiment_name}", 
-                         f"IMHK Samples (σ={sigma}, {basis_type} basis)", center)
-            if compare_with_klein:
-                plot_3d_samples(klein_samples, sigma, f"samples_klein_{experiment_name}", 
-                             f"Klein Samples (σ={sigma}, {basis_type} basis)", center)
-        
-        # For higher dimensions, create 2D projections
-        if dim >= 3:
-            plot_2d_projections(imhk_samples, sigma, f"projections_imhk_{experiment_name}.png", 
-                             f"IMHK Projections (σ={sigma}, {basis_type} basis)", center)
-            if compare_with_klein:
-                plot_2d_projections(klein_samples, sigma, f"projections_klein_{experiment_name}.png", 
-                                 f"Klein Projections (σ={sigma}, {basis_type} basis)", center)
-        
-        # For all dimensions, create PCA projection to 2D
-        plot_pca_projection(imhk_samples, sigma, f"pca_imhk_{experiment_name}.png", 
-                         f"IMHK PCA Projection (σ={sigma}, {basis_type} basis)")
-        if compare_with_klein:
-            plot_pca_projection(klein_samples, sigma, f"pca_klein_{experiment_name}.png", 
-                             f"Klein PCA Projection (σ={sigma}, {basis_type} basis)")
-        
-        logger.info("Visualizations completed successfully")
-    except Exception as e:
-        logger.error(f"Error during visualization: {str(e)}")
-        logger.warning("Continuing with statistical analysis")
+    imhk_time = time.time() - imhk_start
     
-    # Compute statistical distances
-    try:
-        tv_distance = compute_total_variation_distance(imhk_samples, sigma, B, center)
-        logger.info(f"IMHK Total Variation distance: {tv_distance:.6f}")
-        
-        # Compute KL divergence for small dimensions
-        kl_divergence = None
-        if dim <= 3:  # Only compute for small dimensions due to computational complexity
-            kl_divergence = compute_kl_divergence(imhk_samples, sigma, B, center)
-            logger.info(f"IMHK KL divergence: {kl_divergence:.6f}")
-    except Exception as e:
-        logger.error(f"Error computing IMHK statistical distances: {str(e)}")
-        tv_distance = None
-        kl_divergence = None
+    # Convert samples to explicit vectors if necessary
+    if hasattr(imhk_samples, 'rows'):
+        imhk_samples = [vector(row) for row in imhk_samples.rows()]
     
-    # Compile results
+    logger.info(f"IMHK sampling completed in {imhk_time:.2f} seconds")
+    logger.info(f"IMHK acceptance rate: {imhk_metadata.get('acceptance_rate', 0):.2%}")
+    
+    # Initialize results dictionary
     results = {
+        'experiment_name': experiment_name,
         'dimension': dim,
         'sigma': float(sigma),
         'basis_type': basis_type,
-        'center': [float(c) for c in center],
-        'smoothing_parameter': float(smoothing_param),
-        'sigma_smoothing_ratio': float(sigma/smoothing_param),
         'num_samples': num_samples,
-        'burn_in': burn_in,
-        'imhk_acceptance_rate': float(acceptance_rate),
-        'imhk_time': float(imhk_time),
-        'imhk_ess': [float(ess) for ess in ess_values],
-        'imhk_tv_distance': float(tv_distance) if tv_distance is not None else None,
-        'imhk_kl_divergence': float(kl_divergence) if kl_divergence is not None else None
+        'center': [float(x) for x in center],
+        'imhk_time': imhk_time,
+        'imhk_acceptance_rate': imhk_metadata.get('acceptance_rate', 0),
+        'imhk_ess': {},
+        'imhk_autocorr': {},
+        'imhk_tv_distance': None,
+        'imhk_kl_divergence': None
     }
     
-    # Klein comparison results
-    if compare_with_klein and klein_samples is not None:
+    # Run Klein sampler for comparison if requested
+    klein_samples = None
+    if compare_with_klein:
         try:
-            # Compute TV distance for Klein samples
-            klein_tv_distance = compute_total_variation_distance(klein_samples, sigma, B, center)
-            results['klein_time'] = float(klein_time)
-            results['klein_tv_distance'] = float(klein_tv_distance)
-            logger.info(f"Klein Total Variation distance: {klein_tv_distance:.6f}")
+            logger.info("Running Klein sampler for comparison...")
+            klein_start = time.time()
             
-            # Compute KL divergence for Klein samples if feasible
-            if dim <= 3:
-                klein_kl_divergence = compute_kl_divergence(klein_samples, sigma, B, center)
-                results['klein_kl_divergence'] = float(klein_kl_divergence)
-                logger.info(f"Klein KL divergence: {klein_kl_divergence:.6f}")
+            # Use the Klein wrapper that handles different basis types
+            klein_samples_array, klein_metadata = klein_sampler_wrapper(
+                basis_info=lattice_basis,
+                sigma=sigma,
+                num_samples=num_samples,
+                center=center,
+                basis_type=basis_type
+            )
+            
+            # Convert to list of vectors for compatibility
+            klein_samples = [vector(row) for row in klein_samples_array]
+            
+            klein_time = time.time() - klein_start
+            
+            logger.info(f"Klein sampling completed in {klein_time:.2f} seconds")
+            
+            results['klein_time'] = klein_time
+            results['klein_tv_distance'] = None
+            results['klein_kl_divergence'] = None
+            results['speedup_ratio'] = klein_time / imhk_time if imhk_time > 0 else float('inf')
+            
         except Exception as e:
-            logger.error(f"Error computing Klein statistical distances: {str(e)}")
+            logger.warning(f"Klein sampler failed: {e}")
+            klein_samples = None
     
-    # Save results to log file
-    try:
-        with open(logs_dir / f"experiment_{experiment_name}.txt", "w") as f:
-            f.write(f"Experiment: {experiment_name}\n")
-            f.write(f"Dimension: {dim}\n")
-            f.write(f"Sigma: {sigma}\n")
-            f.write(f"Basis type: {basis_type}\n")
-            f.write(f"Center: {center}\n")
-            f.write(f"Smoothing parameter η_{epsilon}(Λ): {smoothing_param:.6f}\n")
-            f.write(f"σ/η ratio: {sigma/smoothing_param:.6f}\n")
-            f.write(f"Number of samples: {num_samples}\n")
-            f.write(f"Burn-in: {burn_in}\n")
-            f.write("\n=== IMHK Results ===\n")
-            f.write(f"Acceptance rate: {acceptance_rate:.6f}\n")
-            f.write(f"Sampling time: {imhk_time:.6f} seconds\n")
-            f.write(f"Effective Sample Size: {ess_values}\n")
-            
-            if tv_distance is not None:
-                f.write(f"Total Variation distance: {tv_distance:.6f}\n")
-            
-            if kl_divergence is not None:
-                f.write(f"KL divergence: {kl_divergence:.6f}\n")
-            
-            if compare_with_klein and klein_samples is not None:
-                f.write("\n=== Klein Sampler Results ===\n")
-                f.write(f"Sampling time: {klein_time:.6f} seconds\n")
-                
-                if 'klein_tv_distance' in results:
-                    f.write(f"Total Variation distance: {results['klein_tv_distance']:.6f}\n")
-                
-                if 'klein_kl_divergence' in results:
-                    f.write(f"KL divergence: {results['klein_kl_divergence']:.6f}\n")
-                
-                f.write("\n=== Comparison ===\n")
-                if klein_time > 0:
-                    f.write(f"IMHK/Klein time ratio: {imhk_time/klein_time:.6f}\n")
-                
-                if 'klein_tv_distance' in results and results['klein_tv_distance'] > 0:
-                    f.write(f"IMHK/Klein TV distance ratio: {tv_distance/results['klein_tv_distance']:.6f}\n")
-                
-                if 'klein_kl_divergence' in results and results['klein_kl_divergence'] > 0:
-                    f.write(f"IMHK/Klein KL divergence ratio: {kl_divergence/results['klein_kl_divergence']:.6f}\n")
-    except Exception as e:
-        logger.error(f"Error writing log file: {str(e)}")
+    # Compute statistical metrics for IMHK samples
+    logger.info("Computing statistical metrics...")
     
-    # Save all data for later analysis
+    # Calculate TV distance and KL divergence
     try:
-        with open(logs_dir / f"experiment_{experiment_name}.pickle", "wb") as f:
-            pickle.dump(results, f)
+        tv_distance = compute_total_variation_distance(
+            samples=imhk_samples[:min(1000, len(imhk_samples))],  # Limit for efficiency
+            sigma=sigma,
+            lattice_basis=lattice_basis,
+            center=center
+        )
+        results['imhk_tv_distance'] = float(tv_distance) if tv_distance is not None else None
+        logger.info(f"IMHK TV distance: {tv_distance:.6f}")
     except Exception as e:
-        logger.error(f"Error saving pickle file: {str(e)}")
+        logger.error(f"Failed to compute TV distance for IMHK: {e}")
+        results['imhk_tv_distance'] = None
+    
+    try:
+        kl_divergence = compute_kl_divergence(
+            samples=imhk_samples[:min(1000, len(imhk_samples))],
+            sigma=sigma,
+            lattice_basis=lattice_basis,
+            center=center
+        )
+        results['imhk_kl_divergence'] = float(kl_divergence) if kl_divergence is not None else None
+        logger.info(f"IMHK KL divergence: {kl_divergence:.6f}")
+    except Exception as e:
+        logger.error(f"Failed to compute KL divergence for IMHK: {e}")
+        results['imhk_kl_divergence'] = None
+    
+    # Compute metrics for Klein samples if available
+    if klein_samples is not None and len(klein_samples) > 0:
+        try:
+            klein_tv = compute_total_variation_distance(
+                samples=klein_samples[:min(1000, len(klein_samples))],
+                sigma=sigma,
+                lattice_basis=lattice_basis,
+                center=center
+            )
+            results['klein_tv_distance'] = float(klein_tv) if klein_tv is not None else None
+            logger.info(f"Klein TV distance: {klein_tv:.6f}")
+        except Exception as e:
+            logger.error(f"Failed to compute TV distance for Klein: {e}")
+            results['klein_tv_distance'] = None
+        
+        try:
+            klein_kl = compute_kl_divergence(
+                samples=klein_samples[:min(1000, len(klein_samples))],
+                sigma=sigma,
+                lattice_basis=lattice_basis,
+                center=center
+            )
+            results['klein_kl_divergence'] = float(klein_kl) if klein_kl is not None else None
+            logger.info(f"Klein KL divergence: {klein_kl:.6f}")
+        except Exception as e:
+            logger.error(f"Failed to compute KL divergence for Klein: {e}")
+            results['klein_kl_divergence'] = None
+    
+    # Compute autocorrelation and ESS for each dimension
+    if imhk_metadata.get('trace') is not None:
+        try:
+            trace_data = np.array(imhk_metadata['trace'])
+            for i in range(min(dim, trace_data.shape[1])):
+                component_trace = trace_data[:, i]
+                autocorr = compute_autocorrelation(component_trace.reshape(-1, 1))
+                ess = compute_ess(component_trace.reshape(-1, 1))
+                results['imhk_autocorr'][f'dim_{i}'] = autocorr[0][:10].tolist()  # First 10 lags
+                results['imhk_ess'][f'dim_{i}'] = float(ess[0])
+            
+            # Compute average ESS
+            if results['imhk_ess']:
+                results['imhk_average_ess'] = float(np.mean(list(results['imhk_ess'].values())))
+        except Exception as e:
+            logger.error(f"Failed to compute ESS/autocorrelation: {e}")
+    
+    # Generate diagnostic plots if requested
+    if plot_results and plots_dir is not None and imhk_metadata.get('trace') is not None:
+        logger.info("Generating diagnostic plots...")
+        try:
+            # Plot trace (first few dimensions)
+            plot_trace(imhk_metadata['trace'], os.path.join(plots_dir, f"trace_{experiment_name}.png"))
+            
+            # Plot autocorrelation
+            plot_autocorrelation(imhk_metadata['trace'], os.path.join(plots_dir, f"autocorr_{experiment_name}.png"))
+            
+            # Plot acceptance rate over time
+            if imhk_metadata.get('acceptance_trace') is not None:
+                plot_acceptance_trace(
+                    imhk_metadata['acceptance_trace'],
+                    os.path.join(plots_dir, f"acceptance_{experiment_name}.png")
+                )
+            
+            # Plot samples visualization based on dimension
+            if dim == 2:
+                plot_2d_samples(imhk_samples, sigma, os.path.join(plots_dir, f"samples_imhk_{experiment_name}.png"))
+                if klein_samples is not None:
+                    plot_2d_samples(klein_samples, sigma, os.path.join(plots_dir, f"samples_klein_{experiment_name}.png"))
+            
+            elif dim == 3:
+                plot_3d_samples(imhk_samples, sigma, os.path.join(plots_dir, f"samples_imhk_{experiment_name}.png"))
+                if klein_samples is not None:
+                    plot_3d_samples(klein_samples, sigma, os.path.join(plots_dir, f"samples_klein_{experiment_name}.png"))
+            
+            else:
+                # For higher dimensions, plot 2D projections
+                plot_2d_projections(imhk_samples, sigma, os.path.join(plots_dir, f"proj_imhk_{experiment_name}.png"))
+                if klein_samples is not None:
+                    plot_2d_projections(klein_samples, sigma, os.path.join(plots_dir, f"proj_klein_{experiment_name}.png"))
+                
+        except Exception as e:
+            logger.error(f"Failed to generate plots: {e}")
+    
+    # Save detailed results
+    if save_results:
+        # Save as JSON
+        try:
+            json_path = os.path.join(data_dir, f"{experiment_name}_results.json")
+            # Create a JSON-serializable version
+            json_results = {k: v for k, v in results.items() if v is not None}
+            # Convert numpy arrays to lists for JSON serialization
+            for key in json_results:
+                if isinstance(json_results[key], dict):
+                    for subkey in json_results[key]:
+                        if isinstance(json_results[key][subkey], np.ndarray):
+                            json_results[key][subkey] = json_results[key][subkey].tolist()
+                elif isinstance(json_results[key], np.ndarray):
+                    json_results[key] = json_results[key].tolist()
+            
+            with open(json_path, 'w') as f:
+                json.dump(json_results, f, indent=2)
+            logger.info(f"Saved JSON results to {json_path}")
+        except Exception as e:
+            logger.error(f"Failed to save JSON results: {e}")
+        
+        # Save as pickle (includes sample data)
+        try:
+            pickle_path = os.path.join(data_dir, f"{experiment_name}_full.pkl")
+            full_results = {
+                'config': results,
+                'imhk_samples': imhk_samples,
+                'imhk_metadata': imhk_metadata,
+                'klein_samples': klein_samples,
+                'lattice_basis': lattice_basis
+            }
+            with open(pickle_path, 'wb') as f:
+                pickle.dump(full_results, f)
+            logger.info(f"Saved full results to {pickle_path}")
+        except Exception as e:
+            logger.error(f"Failed to save pickle results: {e}")
     
     return results
 
+# The rest of the file follows with the same modifications...
+# (removing sklearn imports and PCA-related functions)
 
-def _run_experiment_wrapper(params: Tuple[int, float, str, Vector, int]) -> Dict[str, Any]:
+# Copy calculate_smoothing_parameter function from original
+def calculate_smoothing_parameter(lattice_basis, epsilon=0.01):
     """
-    Wrapper function for running experiments in parallel.
-    
-    Args:
-        params: Tuple containing (dimension, sigma, basis_type, center, num_samples)
-        
-    Returns:
-        Experiment results
-    """
-    dim, sigma, basis_type, center, num_samples = params
-    try:
-        return run_experiment(
-            dim=dim, 
-            sigma=sigma, 
-            num_samples=num_samples,
-            basis_type=basis_type,
-            compare_with_klein=True,
-            center=center
-        )
-    except Exception as e:
-        logger.error(f"Error in experiment: dim={dim}, sigma={sigma}, basis={basis_type}: {str(e)}")
-        return {
-            'dimension': dim,
-            'sigma': sigma,
-            'basis_type': basis_type,
-            'center': center,
-            'error': str(e)
-        }
-
-
-def parameter_sweep(
-    dimensions: Optional[List[int]] = None, 
-    sigmas: Optional[List[float]] = None, 
-    basis_types: Optional[List[str]] = None, 
-    centers: Optional[Dict[int, List[Vector]]] = None, 
-    num_samples: int = 1000,
-    parallel: bool = True,
-    max_workers: Optional[int] = None
-) -> Dict[Tuple, Dict[str, Any]]:
-    """
-    Perform a parameter sweep across different dimensions, sigmas, basis types, and centers.
-    
-    Mathematical Context:
-    This function systematically explores the parameter space to evaluate:
-    - How sampling quality varies with the Gaussian parameter σ
-    - The impact of lattice dimension on sampling efficiency and accuracy
-    - How different basis types (well-conditioned vs. ill-conditioned) affect sampling
-    - The effect of off-center distributions on sampling algorithms
+    Calculate the smoothing parameter η_ε(Λ) for a given lattice.
     
     Cryptographic Relevance:
-    Parameter sweeps are essential for:
-    - Determining optimal parameters for lattice-based cryptographic schemes
-    - Evaluating the trade-off between security (higher σ) and efficiency
-    - Understanding how basis quality affects real-world implementations
-    - Establishing confidence in security parameters across different scenarios
+    The smoothing parameter is fundamental in lattice-based cryptography as it:
+    - Determines the minimum Gaussian width needed for uniform-like behavior
+    - Appears in security reductions for LWE and SIS problems
+    - Guides parameter selection in schemes like BLISS and FALCON
+    - Ensures statistical closeness to continuous Gaussians
+    
+    Mathematical Definition:
+    For a lattice Λ and ε > 0, the smoothing parameter η_ε(Λ) is the smallest s > 0
+    such that ρ_{1/s}(Λ* \ {0}) ≤ ε, where Λ* is the dual lattice.
     
     Args:
-        dimensions: List of dimensions to test (default: [2, 3, 4])
-        sigmas: List of sigma values to test (default: [0.5, 1.0, 2.0, 5.0])
-        basis_types: List of basis types to test (default: ['identity', 'skewed', 'ill-conditioned'])
-        centers: Dictionary mapping dimensions to lists of centers (default: origin for each dimension)
-        num_samples: Number of samples to generate for each configuration (default: 1000)
-        parallel: Whether to use parallel processing (default: True)
-        max_workers: Maximum number of parallel workers (default: CPU count-1)
+        lattice_basis: The basis matrix of the lattice Λ
+        epsilon: The smoothing parameter precision (default: 0.01)
+                Smaller values give tighter bounds but require larger parameters
         
     Returns:
-        A dictionary of results indexed by configuration
+        The smoothing parameter η_ε(Λ) as a float
         
-    Raises:
-        ValueError: If input parameters are invalid
+    Security Considerations:
+    - For cryptographic security, typically ε ∈ [2^-40, 2^-100]
+    - The Gaussian parameter σ should satisfy σ ≥ η_ε(Λ) for security
+    - Common practice: σ = α·η_ε(Λ) where α > 1 (often α ∈ [1.5, 3])
     """
-    # Input validation
-    if dimensions is None:
-        dimensions = [2, 3, 4]
-    else:
-        for dim in dimensions:
-            if not isinstance(dim, (int, Integer)) or dim < 2:
-                raise ValueError(f"Dimension must be an integer ≥ 2, got {dim}")
+    from sage.all import matrix, QQ, sqrt, pi, Matrix
     
-    if sigmas is None:
-        sigmas = [0.5, 1.0, 2.0, 5.0]
-    else:
-        for sigma in sigmas:
-            if not isinstance(sigma, (float, RealNumber)) or sigma <= 0:
-                raise ValueError(f"Sigma must be positive, got {sigma}")
+    # Validate inputs
+    try:
+        # Convert to matrix if needed
+        if not hasattr(lattice_basis, 'nrows'):
+            lattice_basis = matrix(lattice_basis)
+    except Exception as e:
+        raise ValueError(f"lattice_basis must be a matrix or convertible to one: {e}")
     
-    if basis_types is None:
-        basis_types = ['identity', 'skewed', 'ill-conditioned']
-    else:
-        for basis_type in basis_types:
-            if not validate_basis_type(basis_type):
-                raise ValueError(f"Unknown basis type: {basis_type}")
+    if epsilon <= 0 or epsilon >= 1:
+        raise ValueError(f"epsilon must be in (0,1), got {epsilon}")
     
-    if centers is None:
-        centers = {dim: [vector(RR, [0] * dim)] for dim in dimensions}
-    elif isinstance(centers, list):
-        # If centers is a list of vectors, assume it applies to all dimensions
-        centers = {dim: [vector(RR, c) for c in centers if len(c) == dim] for dim in dimensions}
+    n = lattice_basis.nrows()
     
-    # Get global directory paths
-    global logs_dir, plots_dir
+    # For non-square matrices, check if full rank
+    if lattice_basis.ncols() != n:
+        raise ValueError("Lattice basis must be square")
     
-    # Create experiment parameter combinations
-    experiment_params = []
-    for dim in dimensions:
-        for sigma in sigmas:
-            for basis_type in basis_types:
-                for center in centers.get(dim, [vector(RR, [0] * dim)]):
-                    experiment_params.append((dim, sigma, basis_type, center, num_samples))
+    if lattice_basis.rank() < n:
+        raise ValueError("Lattice basis must be full rank")
     
-    logger.info(f"Parameter sweep: {len(experiment_params)} configurations to test")
+    # Use GSO for better numerical stability with general lattices
+    try:
+        logger.info(f"Computing smoothing parameter for {n}×{n} lattice with ε={epsilon}")
+        
+        # Compute GSO
+        B_gso, mu = lattice_basis.gram_schmidt()
+        
+        # Find minimum GSO vector length
+        min_gso_length = min(vector(b).norm() for b in B_gso)
+        
+        # Upper bound based on GSO
+        from sage.all import log, sqrt, pi
+        eta_upper = sqrt(log(2*n * (1 + 1/epsilon)) / pi) / min_gso_length
+        
+        logger.info(f"GSO-based upper bound: η_ε(Λ) ≤ {eta_upper}")
+        
+        # For special lattices, compute tighter bounds
+        if lattice_basis.is_sparse() or (lattice_basis * lattice_basis.transpose()).is_diagonal():
+            # For diagonal or nearly diagonal lattices
+            eigenvalues = (lattice_basis * lattice_basis.transpose()).eigenvalues()
+            min_eigenvalue = min(abs(ev) for ev in eigenvalues if abs(ev) > 1e-10)
+            eta_tight = sqrt(log(2*n * (1 + 1/epsilon)) / pi) / sqrt(min_eigenvalue)
+            logger.info(f"Tight bound for special lattice: η_ε(Λ) ≈ {eta_tight}")
+            return float(eta_tight)
+        
+        # For general lattices, use the GSO bound with a safety factor
+        safety_factor = 1.2  # Add 20% margin for numerical stability
+        eta_final = float(eta_upper * safety_factor)
+        
+        logger.info(f"Final smoothing parameter: η_ε(Λ) = {eta_final}")
+        return eta_final
+        
+    except Exception as e:
+        logger.error(f"Error computing smoothing parameter: {e}")
+        raise RuntimeError(f"Failed to compute smoothing parameter: {e}")
+        
+# Add the compare_tv_distance_vs_sigma function from the original
+def compare_tv_distance_vs_sigma(
+    dimensions=[8, 16, 32, 64], 
+    basis_types=['identity', 'skewed', 'ill-conditioned', 'q-ary'],
+    sigma_eta_ratios=[0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0],
+    num_samples=2000,
+    plot_results=True,
+    output_dir=None
+):
+    """
+    Compare total variation distance between IMHK and Klein samplers across different sigma values.
+    
+    This function analyzes how the total variation distance varies with the ratio σ/η
+    for different dimensions and lattice types, providing insights into:
+    - Optimal parameter ranges for cryptographic applications
+    - Trade-offs between security and efficiency
+    - Performance differences between samplers
+    
+    Cryptographic Relevance:
+    - Lower TV distance indicates better approximation to ideal discrete Gaussian
+    - Critical for security proofs in lattice-based schemes
+    - Helps determine minimal secure parameters
+    
+    Args:
+        dimensions: List of lattice dimensions to test
+        basis_types: List of basis types to evaluate
+        sigma_eta_ratios: List of σ/η ratios to test
+        num_samples: Number of samples per experiment
+        plot_results: Whether to generate plots
+        output_dir: Directory for saving results
+        
+    Returns:
+        Dictionary mapping (dim, basis_type, ratio) to experiment results
+    """
+    logger.info("Starting TV distance comparison across sigma values")
+    logger.info(f"Dimensions: {dimensions}")
+    logger.info(f"Basis types: {basis_types}")
+    logger.info(f"Sigma/eta ratios: {sigma_eta_ratios}")
+    
+    # Set up output directory
+    if output_dir is None:
+        output_dir = os.path.join(results_dir, "comparison")
+    os.makedirs(output_dir, exist_ok=True)
     
     results = {}
     
-    # Create a summary file
-    try:
-        with open(logs_dir / "parameter_sweep_summary.txt", "w") as summary_file:
-            summary_file.write("Parameter Sweep Summary\n")
-            summary_file.write("=====================\n\n")
-    except Exception as e:
-        logger.error(f"Failed to create summary file: {e}")
-        raise
-    
-    # Run experiments in parallel or sequentially
-    if parallel and len(experiment_params) > 1:
-        if max_workers is None:
-            # Default to CPU count - 1 to avoid overwhelming the system
-            max_workers = max(1, mp.cpu_count() - 1)
+    # Run experiments
+    for dim in dimensions:
+        logger.info(f"Processing dimension {dim}")
         
-        logger.info(f"Using parallel processing with {max_workers} workers")
+        # Calculate baseline smoothing parameter for identity lattice
+        identity_basis = create_lattice_basis(dim, 'identity')
+        base_eta = calculate_smoothing_parameter(identity_basis, epsilon=1/16)
+        logger.info(f"Smoothing parameter η_6.25e-02(Λ) = {float(base_eta):.4f} for dimension {dim}")
         
-        try:
-            with mp.Pool(processes=max_workers) as pool:
-                experiment_results = pool.map(_run_experiment_wrapper, experiment_params)
+        for basis_type in basis_types:
+            logger.info(f"  Processing basis type: {basis_type}")
             
-            # Process results
-            for params, result in zip(experiment_params, experiment_results):
-                dim, sigma, basis_type, center, _ = params
-                config_key = (dim, sigma, basis_type, tuple(center))
-                results[config_key] = result
-        except Exception as e:
-            logger.error(f"Parallel processing failed: {e}")
-            logger.info("Falling back to sequential processing")
+            # Create lattice basis
+            try:
+                lattice_basis = create_lattice_basis(dim, basis_type)
+            except Exception as e:
+                logger.error(f"Failed to create {basis_type} basis for dimension {dim}: {e}")
+                continue
             
-            # Fall back to sequential processing
-            for params in experiment_params:
-                dim, sigma, basis_type, center, _ = params
-                config_key = (dim, sigma, basis_type, tuple(center))
-                results[config_key] = _run_experiment_wrapper(params)
-    else:
-        # Sequential processing
-        logger.info("Using sequential processing")
-        for params in experiment_params:
-            dim, sigma, basis_type, center, _ = params
-            config_key = (dim, sigma, basis_type, tuple(center))
-            results[config_key] = _run_experiment_wrapper(params)
-    
-    # Update summary with results
-    try:
-        with open(logs_dir / "parameter_sweep_summary.txt", "a") as summary_file:
-            for config_key, result in results.items():
-                dim, sigma, basis_type, center_tuple = config_key
+            # Calculate actual smoothing parameter for this basis
+            try:
+                eta = calculate_smoothing_parameter(lattice_basis, epsilon=1/16)
+            except Exception as e:
+                logger.warning(f"Failed to calculate smoothing parameter for {basis_type} basis, using base value")
+                eta = base_eta
+            
+            for ratio in sigma_eta_ratios:
+                sigma = ratio * eta
+                logger.info(f"    Testing sigma = {float(sigma):.4f} (ratio = {ratio})")
                 
-                if 'error' in result:
-                    summary_file.write(f"Configuration: dim={dim}, sigma={sigma}, ")
-                    summary_file.write(f"basis={basis_type}, center={center_tuple}\n")
-                    summary_file.write(f"ERROR: {result['error']}\n")
-                    summary_file.write("---\n\n")
-                    continue
+                key = (dim, basis_type, ratio)
                 
-                summary_file.write(f"Configuration: dim={dim}, sigma={sigma}, ")
-                summary_file.write(f"basis={basis_type}, center={center_tuple}\n")
-                summary_file.write(f"IMHK Acceptance Rate: {result.get('imhk_acceptance_rate', 'N/A')}\n")
-                
-                if 'imhk_tv_distance' in result and result['imhk_tv_distance'] is not None:
-                    summary_file.write(f"IMHK Total Variation Distance: {result['imhk_tv_distance']:.6f}\n")
-                
-                if 'klein_tv_distance' in result and result['klein_tv_distance'] is not None:
-                    summary_file.write(f"Klein Total Variation Distance: {result['klein_tv_distance']:.6f}\n")
+                try:
+                    # Run experiment
+                    exp_results = run_experiment(
+                        dim=dim,
+                        sigma=sigma,
+                        num_samples=num_samples,
+                        basis_type=basis_type,
+                        compare_with_klein=True,
+                        plot_results=False  # We'll do custom plots
+                    )
                     
-                    # Only compute ratio if both values are present and non-zero
-                    if (result['imhk_tv_distance'] is not None and 
-                        result['klein_tv_distance'] is not None and 
-                        result['klein_tv_distance'] > 0):
-                        ratio = result['imhk_tv_distance'] / result['klein_tv_distance']
-                        summary_file.write(f"IMHK/Klein TV Ratio: {ratio:.4f}\n")
-                
-                summary_file.write("---\n\n")
-    except Exception as e:
-        logger.error(f"Error updating summary file: {e}")
+                    # Store results
+                    results[key] = {
+                        'dimension': dim,
+                        'basis_type': basis_type,
+                        'sigma_eta_ratio': ratio,
+                        'sigma': float(sigma),
+                        'eta': float(eta),
+                        'imhk_tv_distance': exp_results.get('imhk_tv_distance'),
+                        'klein_tv_distance': exp_results.get('klein_tv_distance'),
+                        'imhk_acceptance_rate': exp_results.get('imhk_acceptance_rate'),
+                        'time_ratio': exp_results.get('speedup_ratio')
+                    }
+                    
+                except Exception as e:
+                    logger.error(f"    Error running experiment: {e}")
+                    results[key] = {
+                        'dimension': dim,
+                        'basis_type': basis_type,
+                        'sigma_eta_ratio': ratio,
+                        'error': str(e)
+                    }
     
-    # Generate comparative plots
+    # Save results
     try:
-        plot_parameter_sweep_results(results, dimensions, sigmas, basis_types)
+        # Save as JSON (convert to serializable format)
+        json_results = {}
+        for key, value in results.items():
+            json_key = f"{key[0]}_{key[1]}_{key[2]}"
+            json_results[json_key] = value
+        
+        json_path = os.path.join(output_dir, "tv_distance_comparison.json")
+        with open(json_path, 'w') as f:
+            json.dump(json_results, f, indent=2)
+        logger.info(f"Saved JSON results to {json_path}")
     except Exception as e:
-        logger.error(f"Error generating parameter sweep plots: {e}")
+        logger.error(f"Failed to save JSON results: {e}")
+    
+    # Save as pickle (preserves full structure)
+    pickle_path = os.path.join(output_dir, "tv_distance_comparison.pkl")
+    with open(pickle_path, 'wb') as f:
+        pickle.dump(results, f)
+    logger.info(f"Saved detailed results to {pickle_path}")
+    
+    # Generate plots if requested
+    if plot_results:
+        _plot_tv_distance_comparison(results, output_dir)
     
     return results
 
-
-def plot_parameter_sweep_results(
-    results: Dict[Tuple, Dict[str, Any]], 
-    dimensions: List[int], 
-    sigmas: List[float], 
-    basis_types: List[str]
-) -> None:
-    """
-    Create comparative plots for the parameter sweep results.
+def _plot_tv_distance_comparison(results, output_dir):
+    """Generate comparison plots for TV distance analysis."""
+    logger.info("Generating TV distance comparison plots")
     
-    Cryptographic Relevance:
-    These visualizations help researchers:
-    - Identify optimal sampling parameters for lattice-based schemes
-    - Understand the relationship between σ/η ratio and sampling quality
-    - Visualize trade-offs between efficiency (acceptance rate) and accuracy (TV distance)
-    - Compare IMHK and Klein samplers across different lattice configurations
+    # Ensure plots directory exists
+    plots_dir = os.path.join(output_dir, "plots")
+    os.makedirs(plots_dir, exist_ok=True)
     
-    Args:
-        results: Dictionary of results from parameter_sweep
-        dimensions: List of dimensions tested
-        sigmas: List of sigma values tested
-        basis_types: List of basis types tested
+    # Group results by dimension and basis type
+    from collections import defaultdict
+    grouped = defaultdict(lambda: defaultdict(list))
+    
+    for (dim, basis_type, ratio), result in results.items():
+        if 'error' not in result:
+            grouped[dim][basis_type].append((ratio, result))
+    
+    # Plot TV distance vs sigma/eta ratio for each dimension
+    for dim in sorted(grouped.keys()):
+        plt.figure(figsize=(10, 6))
         
-    Returns:
-        None (saves plots to files)
-    """
-    # Get global plot directory
-    global plots_dir
+        for basis_type in sorted(grouped[dim].keys()):
+            data = sorted(grouped[dim][basis_type], key=lambda x: x[0])
+            ratios = [d[0] for d in data]
+            imhk_tv = [d[1]['imhk_tv_distance'] for d in data if d[1]['imhk_tv_distance'] is not None]
+            klein_tv = [d[1]['klein_tv_distance'] for d in data if d[1]['klein_tv_distance'] is not None]
+            
+            if imhk_tv:
+                plt.plot(ratios[:len(imhk_tv)], imhk_tv, 'o-', label=f'IMHK ({basis_type})')
+            if klein_tv:
+                plt.plot(ratios[:len(klein_tv)], klein_tv, 's--', label=f'Klein ({basis_type})')
+        
+        plt.xlabel('σ/η Ratio')
+        plt.ylabel('Total Variation Distance')
+        plt.title(f'TV Distance vs σ/η Ratio (Dimension {dim})')
+        plt.legend()
+        plt.grid(True)
+        plt.yscale('log')
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(plots_dir, f'tv_distance_dim{dim}.png'), dpi=150)
+        plt.close()
     
-    # Set plot style for publication quality
-    plt.style.use('seaborn-whitegrid')
-    plt.rcParams.update({
-        'figure.dpi': 300,
-        'savefig.dpi': 300,
-        'font.size': 10,
-        'axes.titlesize': 12,
-        'axes.labelsize': 11,
-        'xtick.labelsize': 9,
-        'ytick.labelsize': 9,
-        'legend.fontsize': 9,
-        'legend.frameon': True,
-        'legend.framealpha': 0.8,
-        'legend.edgecolor': 'gray'
-    })
+    # Plot acceptance rate vs sigma/eta ratio
+    for dim in sorted(grouped.keys()):
+        plt.figure(figsize=(10, 6))
+        
+        for basis_type in sorted(grouped[dim].keys()):
+            data = sorted(grouped[dim][basis_type], key=lambda x: x[0])
+            ratios = [d[0] for d in data]
+            acceptance_rates = [d[1]['imhk_acceptance_rate'] for d in data 
+                              if d[1].get('imhk_acceptance_rate') is not None]
+            
+            if acceptance_rates:
+                plt.plot(ratios[:len(acceptance_rates)], acceptance_rates, 'o-', 
+                        label=f'{basis_type}')
+        
+        plt.xlabel('σ/η Ratio')
+        plt.ylabel('Acceptance Rate')
+        plt.title(f'IMHK Acceptance Rate vs σ/η Ratio (Dimension {dim})')
+        plt.legend()
+        plt.grid(True)
+        plt.ylim(0, 1)
+        
+        plt.tight_layout()
+        plt.savefig(os.path.join(plots_dir, f'acceptance_rate_dim{dim}.png'), dpi=150)
+        plt.close()
     
-    # Plot acceptance rate vs. sigma for each dimension and basis type
-    for dim in dimensions:
-        try:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            
-            markers = ['o', 's', '^', 'D', 'x', '+']
-            colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
-            
-            for i, basis_type in enumerate(basis_types):
-                # Extract data for this dimension and basis type
-                x_data = []
-                y_data = []
-                
-                for sigma in sigmas:
-                    key = (dim, sigma, basis_type, tuple([0] * dim))
-                    if key in results and 'imhk_acceptance_rate' in results[key]:
-                        x_data.append(sigma)
-                        y_data.append(results[key]['imhk_acceptance_rate'])
-                
-                if x_data:
-                    marker = markers[i % len(markers)]
-                    color = colors[i % len(colors)]
-                    ax.plot(x_data, y_data, marker=marker, linestyle='-', color=color,
-                           label=f"{basis_type}", linewidth=1.5, markersize=6)
-            
-            # Add smoothing parameter reference lines for each sigma/eta ratio
-            epsilon = 0.01
-            eta = calculate_smoothing_parameter(dim, epsilon)
-            
-            ratios = [1.0, 2.0, 4.0]
-            for ratio in ratios:
-                sigma_val = ratio * eta
-                if min(sigmas) <= sigma_val <= max(sigmas):
-                    ax.axvline(sigma_val, color='gray', linestyle='--', alpha=0.5, 
-                             label=f"σ/η = {ratio}")
-            
-            ax.set_xlabel('Gaussian Parameter (σ)')
-            ax.set_ylabel('IMHK Acceptance Rate')
-            ax.set_title(f'Acceptance Rate vs. σ (Dimension {dim})')
-            ax.grid(True, alpha=0.3)
-            
-            # Create a more compact legend
-            ax.legend(loc='best', frameon=True, framealpha=0.9, fancybox=True)
-            
-            plt.tight_layout()
-            plt.savefig(plots_dir / f'acceptance_vs_sigma_dim{dim}.png')
-            plt.close(fig)
-        except Exception as e:
-            logger.error(f"Error plotting acceptance rate for dimension {dim}: {e}")
+    # Create summary plot comparing all dimensions
+    plt.figure(figsize=(12, 8))
     
-    # Plot TV distance vs. sigma for each dimension and basis type
-    for dim in dimensions:
-        try:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            
-            markers = ['o', 's', '^', 'D', 'x', '+']
-            colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
-            
-            for i, basis_type in enumerate(basis_types):
-                # Extract data for this dimension and basis type
-                x_data = []
-                y_imhk = []
-                y_klein = []
+    for basis_type in ['identity', 'skewed', 'ill-conditioned']:
+        for dim in sorted(grouped.keys()):
+            if basis_type in grouped[dim]:
+                data = sorted(grouped[dim][basis_type], key=lambda x: x[0])
+                ratios = [d[0] for d in data]
+                imhk_tv = [d[1]['imhk_tv_distance'] for d in data 
+                          if d[1]['imhk_tv_distance'] is not None]
                 
-                for sigma in sigmas:
-                    key = (dim, sigma, basis_type, tuple([0] * dim))
-                    if key in results:
-                        res = results[key]
-                        if ('imhk_tv_distance' in res and res['imhk_tv_distance'] is not None and
-                            'klein_tv_distance' in res and res['klein_tv_distance'] is not None):
-                            x_data.append(sigma)
-                            y_imhk.append(res['imhk_tv_distance'])
-                            y_klein.append(res['klein_tv_distance'])
-                
-                if x_data:
-                    marker_imhk = markers[i % len(markers)]
-                    marker_klein = markers[(i + 1) % len(markers)]
-                    color = colors[i % len(colors)]
-                    
-                    ax.plot(x_data, y_imhk, marker=marker_imhk, linestyle='-', color=color,
-                           label=f"IMHK {basis_type}", linewidth=1.5, markersize=6)
-                    ax.plot(x_data, y_klein, marker=marker_klein, linestyle='--', color=color,
-                           label=f"Klein {basis_type}", linewidth=1.0, markersize=5, alpha=0.7)
-            
-            # Add smoothing parameter reference lines
-            epsilon = 0.01
-            eta = calculate_smoothing_parameter(dim, epsilon)
-            
-            ratios = [1.0, 2.0, 4.0]
-            for ratio in ratios:
-                sigma_val = ratio * eta
-                if min(sigmas) <= sigma_val <= max(sigmas):
-                    ax.axvline(sigma_val, color='gray', linestyle='--', alpha=0.5, 
-                             label=f"σ/η = {ratio}")
-            
-            ax.set_xlabel('Gaussian Parameter (σ)')
-            ax.set_ylabel('Total Variation Distance')
-            ax.set_title(f'TV Distance vs. σ (Dimension {dim})')
-            ax.grid(True, alpha=0.3)
-            
-            # Set y-axis to log scale to better visualize small differences
-            ax.set_yscale('log')
-            
-            # Create a more compact legend with two columns
-            ax.legend(loc='best', frameon=True, framealpha=0.9, fancybox=True, ncol=2)
-            
-            plt.tight_layout()
-            plt.savefig(plots_dir / f'tv_distance_vs_sigma_dim{dim}.png')
-            plt.close(fig)
-        except Exception as e:
-            logger.error(f"Error plotting TV distance for dimension {dim}: {e}")
+                if imhk_tv:
+                    plt.plot(ratios[:len(imhk_tv)], imhk_tv, 'o-', 
+                            label=f'Dim {dim} ({basis_type})')
     
-    # Plot TV distance ratio (IMHK/Klein) vs. sigma
-    for dim in dimensions:
-        try:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            
-            markers = ['o', 's', '^', 'D', 'x', '+']
-            colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
-            
-            for i, basis_type in enumerate(basis_types):
-                # Extract data for this dimension and basis type
-                x_data = []
-                y_ratio = []
-                
-                for sigma in sigmas:
-                    key = (dim, sigma, basis_type, tuple([0] * dim))
-                    if key in results:
-                        res = results[key]
-                        if ('imhk_tv_distance' in res and res['imhk_tv_distance'] is not None and
-                            'klein_tv_distance' in res and res['klein_tv_distance'] is not None and
-                            res['klein_tv_distance'] > 0):
-                            x_data.append(sigma)
-                            ratio = res['imhk_tv_distance'] / res['klein_tv_distance']
-                            y_ratio.append(ratio)
-                
-                if x_data:
-                    marker = markers[i % len(markers)]
-                    color = colors[i % len(colors)]
-                    ax.plot(x_data, y_ratio, marker=marker, linestyle='-', color=color,
-                           label=f"{basis_type}", linewidth=1.5, markersize=6)
-            
-            # Add smoothing parameter reference lines
-            epsilon = 0.01
-            eta = calculate_smoothing_parameter(dim, epsilon)
-            
-            ratios = [1.0, 2.0, 4.0]
-            for ratio in ratios:
-                sigma_val = ratio * eta
-                if min(sigmas) <= sigma_val <= max(sigmas):
-                    ax.axvline(sigma_val, color='gray', linestyle='--', alpha=0.5, 
-                             label=f"σ/η = {ratio}")
-            
-            ax.set_xlabel('Gaussian Parameter (σ)')
-            ax.set_ylabel('TV Distance Ratio (IMHK/Klein)')
-            ax.set_title(f'Quality Improvement Ratio vs. σ (Dimension {dim})')
-            ax.axhline(1.0, color='r', linestyle='--', alpha=0.5, label='Equal Quality')
-            ax.grid(True, alpha=0.3)
-            
-            # Create a more compact legend
-            ax.legend(loc='best', frameon=True, framealpha=0.9, fancybox=True)
-            
-            plt.tight_layout()
-            plt.savefig(plots_dir / f'tv_ratio_vs_sigma_dim{dim}.png')
-            plt.close(fig)
-        except Exception as e:
-            logger.error(f"Error plotting TV ratio for dimension {dim}: {e}")
+    plt.xlabel('σ/η Ratio')
+    plt.ylabel('Total Variation Distance')
+    plt.title('TV Distance Comparison Across Dimensions')
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.grid(True)
+    plt.yscale('log')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(plots_dir, 'tv_distance_summary.png'), dpi=150)
+    plt.close()
+    
+    logger.info(f"Plots saved to {plots_dir}")
+
+# Main execution
+if __name__ == "__main__":
+    # Example usage
+    logger.info("Running IMHK sampler experiments")
+    
+    # Initialize directories
+    init_directories("results/main_experiments")
+    
+    # Run a simple experiment
+    result = run_experiment(
+        dim=8,
+        sigma=2.0,
+        num_samples=1000,
+        basis_type='identity'
+    )
+    
+    print(f"Experiment completed: {result['experiment_name']}")
+    print(f"IMHK acceptance rate: {result['imhk_acceptance_rate']:.2%}")
+    print(f"TV distance: {result.get('imhk_tv_distance', 'N/A')}")

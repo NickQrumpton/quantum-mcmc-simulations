@@ -169,7 +169,7 @@ def test_klein_sampler():
     try:
         # Import the necessary functions
         from sage.all import matrix, vector, RR
-        from imhk_sampler import klein_sampler
+        from imhk_sampler import klein_sampler_single
         
         # Create a 2D identity lattice basis
         dimension = 2
@@ -186,7 +186,7 @@ def test_klein_sampler():
         # Generate samples
         samples = []
         for i in range(num_samples):
-            sample = klein_sampler(B, sigma, center)
+            sample = klein_sampler_single(B, sigma, center)
             samples.append(sample)
             print(f"  Sample {i+1}: {sample}")
         
@@ -338,9 +338,7 @@ def test_full_pipeline():
         
         # Generate samples with Klein sampler
         print(f"Klein sampler: Generating {klein_samples_count} samples...")
-        klein_samples = []
-        for _ in range(klein_samples_count):
-            klein_samples.append(klein_sampler(B, sigma, center))
+        klein_samples = klein_sampler(B, sigma, klein_samples_count, center)
         print(f"Klein sampling completed.")
         
         # Generate samples with IMHK sampler

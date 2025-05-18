@@ -1,0 +1,41 @@
+{
+    "experiment_date": "2025-05-18T18:48:47.579740",
+    "num_chains": 1,
+    "num_samples": 100,
+    "dimensions": [
+        2
+    ],
+    "basis_types": [
+        "identity",
+        "skewed",
+        "ill-conditioned"
+    ],
+    "ratios": [
+        0.5,
+        1.0,
+        2.0
+    ],
+    "key_findings": [
+        {
+            "dimension": 2,
+            "basis_type": "identity",
+            "optimal_ratio": 2.0,
+            "optimal_tv": 0.5556946935755288,
+            "optimal_ess": 65.57627267941757
+        },
+        {
+            "dimension": 2,
+            "basis_type": "skewed",
+            "optimal_ratio": 0.5,
+            "optimal_tv": 0.9467431199857934,
+            "optimal_ess": 100.0
+        },
+        {
+            "dimension": 2,
+            "basis_type": "ill-conditioned",
+            "optimal_ratio": 1.0,
+            "optimal_tv": 0.619672613749989,
+            "optimal_ess": 66.37402044811775
+        }
+    ]
+}

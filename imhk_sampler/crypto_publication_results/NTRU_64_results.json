@@ -1,0 +1,8 @@
+{
+  "basis_type": "NTRU",
+  "dimension": 64,
+  "sigma_ratio": 2.0,
+  "timestamp": "2025-05-18T19:36:20.364776",
+  "status": "failed",
+  "error": "name 'sqrt' is not defined"
+}

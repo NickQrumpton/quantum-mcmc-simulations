@@ -1,0 +1,6 @@
+{
+  "dim4_identity_ratio0.5": {
+    "dimension": 4,
+    "basis_type": "identity",
+    "sigma_eta_ratio": 0.5,
+    "sigma": 

@@ -1,0 +1,8 @@
+{
+  "basis_type": "q-ary",
+  "dimension": 32,
+  "sigma_ratio": 2.0,
+  "timestamp": "2025-05-18T19:36:17.564279",
+  "status": "failed",
+  "error": "name 'sqrt' is not defined"
+}

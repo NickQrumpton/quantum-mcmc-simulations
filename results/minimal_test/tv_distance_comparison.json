@@ -1,0 +1,13 @@
+{
+  "2_identity_1.0": {
+    "dimension": 2,
+    "basis_type": "identity",
+    "sigma_eta_ratio": 1.0,
+    "sigma": 1.1589266660950701,
+    "eta": 1.1589266660950701,
+    "imhk_tv_distance": 0.2957123257257547,
+    "klein_tv_distance": 0.2254946286423979,
+    "imhk_acceptance_rate": 0.6782178217821783,
+    "time_ratio": 0.009431187301117139
+  }
+}

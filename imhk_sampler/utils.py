@@ -53,251 +53,135 @@ def discrete_gaussian_pdf(x: Union[int, float, Vector, list, tuple, np.ndarray],
     """
     Compute the probability density function of a discrete Gaussian distribution.
     
-    Mathematical Formula:
-    ρ_σ,c(x) = exp(-||x - c||² / (2σ²))
-    
-    This is the unnormalized probability density function where:
-    - ||x - c|| is the Euclidean distance between x and center c
-    - σ is the standard deviation of the distribution
-    
-    Cryptographic Relevance:
-    Discrete Gaussian distributions are fundamental in lattice-based cryptography.
-    They are used in schemes like:
-    - Ring-LWE and LWE-based encryption
-    - Lattice-based signatures (e.g., FALCON, CRYSTALS-Dilithium)
-    - Trapdoor sampling for security reductions
-    - Generating error terms with provable security properties
-    
     Args:
         x: The point to evaluate (can be a vector or scalar)
-        sigma: The standard deviation of the Gaussian
-        center: The center of the Gaussian (default: origin)
+        sigma: The standard deviation of the distribution
+        center: The center of the distribution (default: origin)
         
     Returns:
-        The probability density at point x
+        The unnormalized probability density exp(-||x - center||² / (2σ²))
         
-    Raises:
-        ValueError: If sigma is not positive or if dimensions of x and center don't match
+    Note:
+        This returns the unnormalized density. The normalization factor
+        can be computed separately when needed.
     """
-    # Validate sigma
     if sigma <= 0:
-        raise ValueError("Standard deviation (sigma) must be positive")
+        raise ValueError("Sigma must be positive")
     
-    # Handle default center
+    # Handle scalar case
+    if isinstance(x, (int, float, Integer)):
+        x = vector([x])
+    elif isinstance(x, (list, tuple, np.ndarray)):
+        x = vector(x)
+    
+    # Handle center
     if center is None:
-        if isinstance(x, (list, tuple, np.ndarray)) or isinstance(x, Vector):
-            center = vector(RR, [0] * len(x))
-        else:
-            center = 0
+        center = vector([0] * len(x))
+    elif isinstance(center, (int, float, Integer)):
+        center = vector([center])
+    elif isinstance(center, (list, tuple, np.ndarray)):
+        center = vector(center)
     
-    # Convert lists/tuples/arrays to Sage vectors
-    if isinstance(x, (list, tuple, np.ndarray)):
-        try:
-            x = vector(RR, x)
-        except Exception as e:
-            logger.error(f"Error converting input to Sage vector: {e}")
-            raise ValueError(f"Failed to convert input to Sage vector: {e}") from e
-    
-    if isinstance(center, (list, tuple, np.ndarray)):
-        try:
-            center = vector(RR, center)
-        except Exception as e:
-            logger.error(f"Error converting center to Sage vector: {e}")
-            raise ValueError(f"Failed to convert center to Sage vector: {e}") from e
-    
-    # Check dimensions match if both are vectors
-    if isinstance(x, Vector) and isinstance(center, Vector) and len(x) != len(center):
-        raise ValueError(f"Dimension mismatch: x has dimension {len(x)}, center has dimension {len(center)}")
+    # Check dimensions
+    if len(x) != len(center):
+        raise ValueError(f"Dimension mismatch: x has length {len(x)}, center has length {len(center)}")
     
     try:
-        if isinstance(x, Vector):
-            # Compute the squared norm of (x - center) using dot product for numerical stability
-            diff = vector(RR, x) - vector(RR, center)
-            squared_norm = diff.dot_product(diff)
-            
-            # Handle potential numerical issues
-            if squared_norm < 0:
-                logger.warning(f"Negative squared norm detected: {squared_norm}, using absolute value")
-                squared_norm = abs(squared_norm)
-                
-            # Check for potential overflow
-            if squared_norm > 700 * sigma * sigma:
-                logger.debug(f"Large squared norm detected: {squared_norm}, result will be close to zero")
-                return 1e-300  # Effectively zero but not exactly zero to avoid division issues
-                
-            return exp(-squared_norm / (2 * sigma * sigma))
-        else:
-            # Scalar case
-            diff_squared = (x - center) ** 2
-            
-            # Check for potential overflow
-            if diff_squared > 700 * sigma * sigma:
-                logger.debug(f"Large squared difference detected: {diff_squared}, result will be close to zero")
-                return 1e-300  # Effectively zero but not exactly zero
-                
-            return exp(-diff_squared / (2 * sigma * sigma))
-            
+        # Compute ||x - center||²
+        diff = x - center
+        norm_squared = sum(float(d)**2 for d in diff)
+        
+        # Compute exp(-||x - center||² / (2σ²))
+        return exp(-norm_squared / (2 * sigma**2))
+        
     except Exception as e:
         logger.error(f"Error computing discrete Gaussian PDF: {e}")
-        raise RuntimeError(f"Failed to compute discrete Gaussian PDF: {e}") from e
+        raise
 
 
-def precompute_discrete_gaussian_probabilities(sigma: float,
-                                              center: Union[int, float] = 0,
-                                              radius: float = 6) -> Tuple[np.ndarray, np.ndarray]:
+def create_lattice_basis(dim, basis_type='identity'):
     """
-    Precompute discrete Gaussian probabilities for integers within radius*sigma of center.
-    
-    Mathematical Formula:
-    ρ_σ,c(x) = exp(-||x - c||² / (2σ²))
-    
-    Normalized to ensure the sum of probabilities equals 1.
+    Create a lattice basis of the specified type for cryptographic experiments.
     
     Cryptographic Relevance:
-    Precomputing these probabilities is essential for efficient sampling in:
-    - Lattice-based signature schemes
-    - Encryption schemes requiring high-performance Gaussian sampling
-    - Security-critical applications where constant-time operations are needed
-    
-    Assumptions:
-    - The radius parameter is assumed to cover the significant mass of the distribution. 
-      Typically, 6σ is sufficient to capture >99.999% of the distribution's mass.
-    - For cryptographic applications, larger radius values may be needed to ensure
-      statistical indistinguishability in security proofs.
+    Different lattice types model various security scenarios:
+    - Identity: Standard orthogonal basis (baseline)
+    - q-ary: Models lattices from LWE-based constructions
+    - NTRU: NTRU lattices with Falcon parameters for NIST standardization
+    - PrimeCyclotomic: Prime cyclotomic lattices (Mitaka-style)
     
     Args:
-        sigma: The standard deviation of the Gaussian
-        center: The center of the Gaussian (default: 0)
-        radius: How many standard deviations to consider (default: 6)
+        dim: Dimension of the lattice (must be ≥ 2)
+        basis_type: Type of basis to create (default: 'identity')
+                   Options: 'identity', 'q-ary', 'NTRU', 'PrimeCyclotomic'
         
     Returns:
-        A tuple containing:
-        - Array of integer points
-        - Array of corresponding probabilities (normalized to sum to 1)
+        A SageMath matrix representing the lattice basis, or
+        a tuple (polynomial_modulus, prime_modulus) for structured lattices
         
     Raises:
-        ValueError: If sigma or radius is not positive, or if total probability mass is zero
+        ValueError: If dimension is invalid or basis_type is unknown
     """
-    # Input validation
-    if sigma <= 0:
-        raise ValueError("Standard deviation (sigma) must be positive")
-    if radius <= 0:
-        raise ValueError("Radius must be positive")
+    if not isinstance(dim, (int, Integer)) or dim < 2:
+        raise ValueError(f"Dimension must be an integer ≥ 2, got {dim}")
     
-    try:
-        # Compute bounds
-        lower_bound = int(floor(center - radius * sigma))
-        upper_bound = int(ceil(center + radius * sigma))
-        
-        # Create arrays for points and probabilities
-        points = np.arange(lower_bound, upper_bound + 1)
-        probs = np.zeros(len(points), dtype=np.float64)
-        
-        # Calculate probabilities using vectorized operations where possible
-        for i, x in enumerate(points):
-            try:
-                probs[i] = discrete_gaussian_pdf(x, sigma, center)
-            except Exception as e:
-                logger.warning(f"Error computing probability for x={x}: {e}, using fallback")
-                # Fallback to standard formula with safeguards
-                diff_squared = (x - center) ** 2
-                if diff_squared > 700 * sigma * sigma:
-                    probs[i] = 1e-300
-                else:
-                    probs[i] = exp(-diff_squared / (2 * sigma * sigma))
-        
-        # Check for underflow
-        total = np.sum(probs)
-        if total <= 0 or not np.isfinite(total):
-            logger.error("Total probability mass is zero or invalid due to numerical underflow")
-            raise ValueError("Total probability mass is zero or invalid due to numerical underflow; "
-                            "increase sigma or use extended precision")
-        
-        # Normalize probabilities in a single operation
-        probs = probs / total
-        
-        # Final validation
-        if not np.all(np.isfinite(probs)):
-            logger.warning("Non-finite values detected in normalized probabilities")
-            # Replace non-finite values with zeros and renormalize
-            probs[~np.isfinite(probs)] = 0
-            new_total = np.sum(probs)
-            if new_total > 0:
-                probs = probs / new_total
-            else:
-                raise ValueError("Cannot recover from non-finite probability values")
-        
-        return points, probs
-        
-    except Exception as e:
-        logger.error(f"Error precomputing discrete Gaussian probabilities: {e}")
-        raise RuntimeError(f"Failed to precompute discrete Gaussian probabilities: {e}") from e
-
-
-def calculate_smoothing_parameter(dim: int, epsilon: float = 0.01) -> float:
-    """
-    Calculate the smoothing parameter for a lattice.
+    supported_types = ['identity', 'q-ary', 'NTRU', 'PrimeCyclotomic']
+    if basis_type not in supported_types:
+        raise ValueError(f"Unknown basis type '{basis_type}'. Supported types: {supported_types}")
     
-    Mathematical Context:
-    The smoothing parameter η_ε(Λ) is a fundamental concept in lattice-based cryptography.
-    It represents the Gaussian parameter at which the discrete Gaussian distribution over
-    the dual lattice Λ* appears nearly uniform modulo the lattice.
+    logger.info(f"Creating {basis_type} lattice basis of dimension {dim}")
     
-    For an identity basis, the smoothing parameter is approximated as:
-    η_ε(Λ) ≈ sqrt(ln(2n/ε)/π)
+    if basis_type == 'identity':
+        # Standard orthogonal basis
+        return identity_matrix(ZZ, dim)
     
-    Where:
-    - n is the lattice dimension
-    - ε is a small constant, typically 2^(-n)
-    
-    Cryptographic Relevance:
-    In lattice-based cryptography, sampling with σ > η_ε(Λ) ensures statistical
-    properties required for security proofs in schemes like:
-    - Ring-LWE encryption
-    - Lattice-based signature schemes
-    - Trapdoor functions
-    
-    Args:
-        dim: Dimension of the lattice
-        epsilon: Small constant (default: 0.01)
+    elif basis_type == 'q-ary':
+        # q-ary lattice as used in LWE-based cryptography
+        # Uses prime modulus based on dimension for cryptographic strength
+        q = next_prime(2 ** (int(dim / 2)))
+        logger.info(f"Creating q-ary lattice with q = {q}")
         
-    Returns:
-        The approximate smoothing parameter
-    """
-    if dim <= 0:
-        raise ValueError("Dimension must be positive")
-    if epsilon <= 0 or epsilon >= 1:
-        raise ValueError("Epsilon must be between 0 and 1")
-    
-    try:
-        # Use logarithm for numerical stability
-        return sqrt(log(2*dim/epsilon)/pi)
-    except Exception as e:
-        logger.error(f"Error calculating smoothing parameter: {e}")
-        raise RuntimeError(f"Failed to calculate smoothing parameter: {e}") from e
-
-
-def is_positive_definite(matrix: Matrix) -> bool:
-    """
-    Check if a matrix is positive definite.
-    
-    A symmetric matrix is positive definite if all its eigenvalues are positive.
-    This is important for covariance matrices in multivariate Gaussian distributions.
-    
-    Args:
-        matrix: A symmetric matrix to check
+        # Create a random matrix A and construct the q-ary lattice
+        # L_q(A) = {v ∈ Z^n : Av ≡ 0 (mod q)}
+        from sage.all import randint
+        B = matrix(ZZ, dim, dim)
         
-    Returns:
-        True if the matrix is positive definite, False otherwise
-    """
-    try:
-        # Check if matrix is symmetric
-        if not matrix.is_symmetric():
-            return False
+        # Standard q-ary lattice construction
+        for i in range(dim):
+            B[i, i] = q
+            
+        # Random linear constraints
+        for i in range(int(dim/2)):
+            for j in range(int(dim/2), dim):
+                B[i, j] = randint(0, q - 1)
+                
+        return B
+    
+    elif basis_type == 'NTRU':
+        # NTRU lattice with Falcon parameters for NIST post-quantum standards
+        q = 12289  # Falcon standard modulus
+        N = 512 if dim <= 512 else 1024  # Falcon-512 or Falcon-1024
         
-        # Check if all eigenvalues are positive
-        eigenvalues = matrix.eigenvalues()
-        return all(eigval > 0 for eigval in eigenvalues)
-    except Exception as e:
-        logger.error(f"Error checking positive definiteness: {e}")
-        return False
+        logger.info(f"Creating NTRU lattice with N = {N}, q = {q}")
+        
+        # For NTRU, we return the parameters rather than a matrix
+        # The sampler will handle the polynomial representation
+        R = PolynomialRing(ZZ, 'x')
+        x = R.gen()
+        poly_mod = x**N + 1  # Cyclotomic polynomial for NTRU
+        
+        return (poly_mod, q)
+    
+    elif basis_type == 'PrimeCyclotomic':
+        # Prime cyclotomic lattice (Mitaka-style construction)
+        # Uses specific parameters for cryptographic applications
+        m = 683  # Prime for cyclotomic construction
+        q = 1367  # Prime modulus
+        
+        logger.info(f"Creating Prime Cyclotomic lattice with m = {m}, q = {q}")
+        
+        R = PolynomialRing(ZZ, 'x')
+        x = R.gen()
+        poly_mod = x**m - 1  # m-th cyclotomic polynomial
+        
+        return (poly_mod, q)

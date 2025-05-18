@@ -1,0 +1,418 @@
+[
+  {
+    "basis_type": "identity",
+    "dimension": 8,
+    "sigma": 0.7667432567442026,
+    "sigma_ratio": 0.5,
+    "acceptance_rate": 0.334,
+    "imhk_time": 0.4423942565917969,
+    "num_samples": 1000,
+    "ess": [
+      352.3901965501994
+    ],
+    "tv_distance": 1.0
+  },
+  {
+    "basis_type": "identity",
+    "dimension": 8,
+    "sigma": 1.5334865134884053,
+    "sigma_ratio": 1.0,
+    "acceptance_rate": 0.36533333333333334,
+    "imhk_time": 0.5580742359161377,
+    "num_samples": 1000,
+    "ess": [
+      271.31092616903754
+    ],
+    "tv_distance": 0.999778062510421
+  },
+  {
+    "basis_type": "identity",
+    "dimension": 8,
+    "sigma": 2.3002297702326078,
+    "sigma_ratio": 1.5,
+    "acceptance_rate": 0.38,
+    "imhk_time": 0.6543581485748291,
+    "num_samples": 1000,
+    "ess": [
+      132.09690401064674
+    ],
+    "tv_distance": 0.9999020465180001
+  },
+  {
+    "basis_type": "identity",
+    "dimension": 8,
+    "sigma": 3.0669730269768105,
+    "sigma_ratio": 2.0,
+    "acceptance_rate": 0.32266666666666666,
+    "imhk_time": 0.768625020980835,
+    "num_samples": 1000,
+    "ess": [
+      220.23410613646487
+    ],
+    "tv_distance": 0.9999999999999922
+  },
+  {
+    "basis_type": "identity",
+    "dimension": 8,
+    "sigma": 3.8337162837210133,
+    "sigma_ratio": 2.5,
+    "acceptance_rate": 0.3606666666666667,
+    "imhk_time": 0.8834021091461182,
+    "num_samples": 1000,
+    "ess": [
+      164.90850090582438
+    ],
+    "tv_distance": 0.9999999999999828
+  },
+  {
+    "basis_type": "identity",
+    "dimension": 8,
+    "sigma": 4.6004595404652155,
+    "sigma_ratio": 3.0,
+    "acceptance_rate": 0.3413333333333333,
+    "imhk_time": 0.9729781150817871,
+    "num_samples": 1000,
+    "ess": [
+      273.04676774412735
+    ],
+    "tv_distance": 0.9999999999999901
+  },
+  {
+    "basis_type": "q-ary",
+    "dimension": 8,
+    "sigma": 0.06168936042969099,
+    "sigma_ratio": 0.5,
+    "acceptance_rate": 1.0,
+    "imhk_time": 1.2434358596801758,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": 0.5
+  },
+  {
+    "basis_type": "q-ary",
+    "dimension": 8,
+    "sigma": 0.12337872085938198,
+    "sigma_ratio": 1.0,
+    "acceptance_rate": 1.0,
+    "imhk_time": 1.2452540397644043,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": 0.5
+  },
+  {
+    "basis_type": "q-ary",
+    "dimension": 8,
+    "sigma": 0.18506808128907298,
+    "sigma_ratio": 1.5000000000000002,
+    "acceptance_rate": 1.0,
+    "imhk_time": 1.2812221050262451,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": 0.5
+  },
+  {
+    "basis_type": "q-ary",
+    "dimension": 8,
+    "sigma": 0.24675744171876396,
+    "sigma_ratio": 2.0,
+    "acceptance_rate": 1.0,
+    "imhk_time": 1.3094332218170166,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": 0.5
+  },
+  {
+    "basis_type": "q-ary",
+    "dimension": 8,
+    "sigma": 0.30844680214845493,
+    "sigma_ratio": 2.5,
+    "acceptance_rate": 1.0,
+    "imhk_time": 1.3202769756317139,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": 0.5
+  },
+  {
+    "basis_type": "q-ary",
+    "dimension": 8,
+    "sigma": 0.37013616257814597,
+    "sigma_ratio": 3.0000000000000004,
+    "acceptance_rate": 1.0,
+    "imhk_time": 1.3143792152404785,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": 0.5
+  },
+  {
+    "basis_type": "identity",
+    "dimension": 16,
+    "sigma": 0.8019065542822736,
+    "sigma_ratio": 0.5,
+    "acceptance_rate": 0.18666666666666668,
+    "imhk_time": 1.0121231079101562,
+    "num_samples": 1000,
+    "ess": [
+      155.18841333647302
+    ],
+    "tv_distance": 1.0
+  },
+  {
+    "basis_type": "identity",
+    "dimension": 16,
+    "sigma": 1.6038131085645473,
+    "sigma_ratio": 1.0,
+    "acceptance_rate": 0.18,
+    "imhk_time": 1.2441730499267578,
+    "num_samples": 1000,
+    "ess": [
+      53.75075711835695
+    ],
+    "tv_distance": 1.0
+  },
+  {
+    "basis_type": "identity",
+    "dimension": 16,
+    "sigma": 2.405719662846821,
+    "sigma_ratio": 1.5,
+    "acceptance_rate": 0.18133333333333335,
+    "imhk_time": 1.4741590023040771,
+    "num_samples": 1000,
+    "ess": [
+      96.66588189656773
+    ],
+    "tv_distance": 0.9999999999999778
+  },
+  {
+    "basis_type": "identity",
+    "dimension": 16,
+    "sigma": 3.2076262171290946,
+    "sigma_ratio": 2.0,
+    "acceptance_rate": 0.12866666666666668,
+    "imhk_time": 1.7098898887634277,
+    "num_samples": 1000,
+    "ess": [
+      44.99533284044961
+    ],
+    "tv_distance": 1.0
+  },
+  {
+    "basis_type": "identity",
+    "dimension": 16,
+    "sigma": 4.009532771411369,
+    "sigma_ratio": 2.5000000000000004,
+    "acceptance_rate": 0.17733333333333334,
+    "imhk_time": 1.9195280075073242,
+    "num_samples": 1000,
+    "ess": [
+      57.57978397149193
+    ],
+    "tv_distance": 1.0
+  },
+  {
+    "basis_type": "q-ary",
+    "dimension": 16,
+    "sigma": 0.006689330441368006,
+    "sigma_ratio": 0.5,
+    "acceptance_rate": 1.0,
+    "imhk_time": 7.149621963500977,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": 0.5
+  },
+  {
+    "basis_type": "q-ary",
+    "dimension": 16,
+    "sigma": 0.013378660882736012,
+    "sigma_ratio": 1.0,
+    "acceptance_rate": 1.0,
+    "imhk_time": 7.254016160964966,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": 0.5
+  },
+  {
+    "basis_type": "q-ary",
+    "dimension": 16,
+    "sigma": 0.020067991324104018,
+    "sigma_ratio": 1.5,
+    "acceptance_rate": 1.0,
+    "imhk_time": 7.205749988555908,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": 0.5
+  },
+  {
+    "basis_type": "q-ary",
+    "dimension": 16,
+    "sigma": 0.026757321765472023,
+    "sigma_ratio": 2.0,
+    "acceptance_rate": 1.0,
+    "imhk_time": 7.244561195373535,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": 0.5
+  },
+  {
+    "basis_type": "q-ary",
+    "dimension": 16,
+    "sigma": 0.03344665220684003,
+    "sigma_ratio": 2.5,
+    "acceptance_rate": 1.0,
+    "imhk_time": 7.217142105102539,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": 0.5
+  },
+  {
+    "basis_type": "NTRU",
+    "dimension": 512,
+    "sigma": 4.434230485664903,
+    "sigma_ratio": 0.8,
+    "acceptance_rate": 0.0,
+    "imhk_time": 1.5650696754455566,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": null
+  },
+  {
+    "basis_type": "NTRU",
+    "dimension": 512,
+    "sigma": 5.542788107081129,
+    "sigma_ratio": 1.0,
+    "acceptance_rate": 0.0,
+    "imhk_time": 1.6711602210998535,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": null
+  },
+  {
+    "basis_type": "NTRU",
+    "dimension": 512,
+    "sigma": 6.651345728497354,
+    "sigma_ratio": 1.2,
+    "acceptance_rate": 0.0,
+    "imhk_time": 1.6062531471252441,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": null
+  },
+  {
+    "basis_type": "NTRU",
+    "dimension": 512,
+    "sigma": 8.314182160621693,
+    "sigma_ratio": 1.5,
+    "acceptance_rate": 0.0,
+    "imhk_time": 1.5677618980407715,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": null
+  },
+  {
+    "basis_type": "NTRU",
+    "dimension": 512,
+    "sigma": 11.085576214162257,
+    "sigma_ratio": 2.0,
+    "acceptance_rate": 0.0,
+    "imhk_time": 1.6225831508636475,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": null
+  },
+  {
+    "basis_type": "PrimeCyclotomic",
+    "dimension": 683,
+    "sigma": 1.4789185237868923,
+    "sigma_ratio": 0.8,
+    "acceptance_rate": 0.0,
+    "imhk_time": 2.1931867599487305,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": null
+  },
+  {
+    "basis_type": "PrimeCyclotomic",
+    "dimension": 683,
+    "sigma": 1.848648154733615,
+    "sigma_ratio": 1.0,
+    "acceptance_rate": 0.0,
+    "imhk_time": 2.230858087539673,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": null
+  },
+  {
+    "basis_type": "PrimeCyclotomic",
+    "dimension": 683,
+    "sigma": 2.218377785680338,
+    "sigma_ratio": 1.2,
+    "acceptance_rate": 0.0,
+    "imhk_time": 2.120515823364258,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": null
+  },
+  {
+    "basis_type": "PrimeCyclotomic",
+    "dimension": 683,
+    "sigma": 2.7729722321004227,
+    "sigma_ratio": 1.5,
+    "acceptance_rate": 0.0,
+    "imhk_time": 2.2113900184631348,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": null
+  },
+  {
+    "basis_type": "PrimeCyclotomic",
+    "dimension": 683,
+    "sigma": 3.69729630946723,
+    "sigma_ratio": 2.0,
+    "acceptance_rate": 0.0,
+    "imhk_time": 2.153179883956909,
+    "num_samples": 1000,
+    "ess": [
+      1000
+    ],
+    "tv_distance": null
+  }
+]

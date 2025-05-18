@@ -1,0 +1,74 @@
+{
+  "4_identity_0.5": {
+    "dimension": 4,
+    "basis_type": "identity",
+    "sigma_eta_ratio": 0.5,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  },
+  "4_identity_1.0": {
+    "dimension": 4,
+    "basis_type": "identity",
+    "sigma_eta_ratio": 1.0,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  },
+  "4_identity_2.0": {
+    "dimension": 4,
+    "basis_type": "identity",
+    "sigma_eta_ratio": 2.0,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  },
+  "4_skewed_0.5": {
+    "dimension": 4,
+    "basis_type": "skewed",
+    "sigma_eta_ratio": 0.5,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  },
+  "4_skewed_1.0": {
+    "dimension": 4,
+    "basis_type": "skewed",
+    "sigma_eta_ratio": 1.0,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  },
+  "4_skewed_2.0": {
+    "dimension": 4,
+    "basis_type": "skewed",
+    "sigma_eta_ratio": 2.0,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  },
+  "8_identity_0.5": {
+    "dimension": 8,
+    "basis_type": "identity",
+    "sigma_eta_ratio": 0.5,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  },
+  "8_identity_1.0": {
+    "dimension": 8,
+    "basis_type": "identity",
+    "sigma_eta_ratio": 1.0,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  },
+  "8_identity_2.0": {
+    "dimension": 8,
+    "basis_type": "identity",
+    "sigma_eta_ratio": 2.0,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  },
+  "8_skewed_0.5": {
+    "dimension": 8,
+    "basis_type": "skewed",
+    "sigma_eta_ratio": 0.5,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  },
+  "8_skewed_1.0": {
+    "dimension": 8,
+    "basis_type": "skewed",
+    "sigma_eta_ratio": 1.0,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  },
+  "8_skewed_2.0": {
+    "dimension": 8,
+    "basis_type": "skewed",
+    "sigma_eta_ratio": 2.0,
+    "error": "imhk_sampler() got an unexpected keyword argument 'lattice_basis'"
+  }
+}

@@ -18,6 +18,246 @@ import logging
 # Set up module logger
 logger = logging.getLogger("imhk_samplers")
 
+
+def imhk_sampler_wrapper(basis_info, sigma: float, num_samples: int, center: Optional[Vector] = None, 
+                        burn_in: int = 1000, basis_type: str = 'identity') -> Tuple[np.ndarray, dict]:
+    """
+    Wrapper function for IMHK sampler that handles different cryptographic lattice types.
+    
+    This wrapper intelligently dispatches to appropriate sampling algorithms based on 
+    the lattice type (matrix-based or polynomial/structured).
+    
+    Args:
+        basis_info: Either a Matrix or tuple (poly_mod, q) for structured lattices
+        sigma: Standard deviation of the Gaussian
+        num_samples: Number of samples to generate
+        center: Center of the Gaussian (default: origin)
+        burn_in: Number of initial samples to discard
+        basis_type: Type of basis ('identity', 'q-ary', 'NTRU', 'PrimeCyclotomic')
+        
+    Returns:
+        Tuple (samples, metadata)
+    """
+    if basis_type in ['NTRU', 'PrimeCyclotomic']:
+        # Handle structured lattices
+        if not isinstance(basis_info, tuple) or len(basis_info) != 2:
+            raise ValueError(f"For {basis_type}, expected tuple (poly_mod, q)")
+        return imhk_sampler_structured(basis_info, sigma, num_samples, center, burn_in, basis_type)
+    else:
+        # Handle matrix-based lattices  
+        if not hasattr(basis_info, 'nrows'):
+            raise ValueError(f"For {basis_type}, expected a matrix")
+        return imhk_sampler(basis_info, sigma, num_samples, center, burn_in)
+
+
+def klein_sampler_wrapper(basis_info, sigma: float, num_samples: int,
+                         center: Optional[Vector] = None, basis_type: str = 'identity') -> Tuple[np.ndarray, dict]:
+    """
+    Wrapper function for Klein sampler that handles different cryptographic lattice types.
+    
+    Args:
+        basis_info: Either a Matrix or tuple (poly_mod, q) for structured lattices
+        sigma: Standard deviation of the Gaussian
+        num_samples: Number of samples to generate
+        center: Center of the Gaussian (default: origin)
+        basis_type: Type of basis ('identity', 'q-ary', 'NTRU', 'PrimeCyclotomic')
+        
+    Returns:
+        Tuple (samples, metadata)
+    """
+    if basis_type in ['NTRU', 'PrimeCyclotomic']:
+        # Handle structured lattices
+        if not isinstance(basis_info, tuple) or len(basis_info) != 2:
+            raise ValueError(f"For {basis_type}, expected tuple (poly_mod, q)")
+        return klein_sampler_structured(basis_info, sigma, num_samples, center, basis_type)
+    else:
+        # Handle matrix-based lattices  
+        if not hasattr(basis_info, 'nrows'):
+            raise ValueError(f"For {basis_type}, expected a matrix")
+        samples = klein_sampler(basis_info, sigma, num_samples, center)
+        metadata = {
+            'basis_type': basis_type,
+            'sigma': sigma
+        }
+        return samples, metadata
+
+
+def klein_sampler_structured(lattice_params: Tuple, sigma: float, num_samples: int,
+                           center: Optional[Vector] = None, basis_type: str = 'NTRU') -> Tuple[np.ndarray, dict]:
+    """
+    Klein sampler for structured lattices (NTRU, Prime Cyclotomic).
+    
+    Simplified sampling for polynomial-based lattices.
+    
+    Args:
+        lattice_params: Tuple (polynomial_modulus, prime_modulus)
+        sigma: Standard deviation of the Gaussian
+        num_samples: Number of samples to generate
+        center: Center of the Gaussian (default: origin)
+        basis_type: Type of structured lattice
+        
+    Returns:
+        Tuple (samples, metadata)
+    """
+    poly_mod, q = lattice_params
+    degree = poly_mod.degree()
+    
+    logger.info(f"Starting structured Klein sampler: type={basis_type}, degree={degree}, q={q}")
+    
+    # For structured lattices, we work in the polynomial ring
+    R = poly_mod.parent()
+    
+    # Initialize samples list
+    samples = []
+    
+    # Generate samples
+    for i in range(num_samples):
+        # Generate coefficients for polynomial sample
+        coeffs = []
+        for j in range(degree):
+            # Sample from discrete Gaussian over integers
+            coeff = _sample_discrete_gaussian_integer(sigma, 0)
+            coeffs.append(coeff % q)  # Reduce modulo q
+            
+        # Create polynomial from coefficients
+        sample_poly = R(coeffs)
+        
+        # Convert polynomial to vector of coefficients
+        coeffs_list = sample_poly.list()
+        # Pad with zeros to full degree if necessary
+        while len(coeffs_list) < degree:
+            coeffs_list.append(0)
+        sample_vector = [int(c) for c in coeffs_list]
+        samples.append(sample_vector)
+            
+    # Convert samples to numpy array with correct shape
+    if samples:
+        samples_array = np.array(samples)
+    else:
+        samples_array = np.zeros((0, degree))  # Empty array with correct shape
+    
+    metadata = {
+        'basis_type': basis_type,
+        'polynomial_degree': degree,
+        'modulus': q,
+        'sigma': sigma
+    }
+    
+    return samples_array, metadata
+
+
+def imhk_sampler_structured(lattice_params: Tuple, sigma: float, num_samples: int, 
+                           center: Optional[Vector] = None, burn_in: int = 1000,
+                           basis_type: str = 'NTRU') -> Tuple[np.ndarray, dict]:
+    """
+    IMHK sampler for structured lattices (NTRU, Prime Cyclotomic).
+    
+    Handles polynomial-based lattice representations used in modern
+    cryptographic constructions like Falcon and Mitaka.
+    
+    Args:
+        lattice_params: Tuple (polynomial_modulus, prime_modulus)
+        sigma: Standard deviation of the Gaussian
+        num_samples: Number of samples to generate
+        center: Center of the Gaussian (default: origin)
+        burn_in: Number of initial samples to discard
+        basis_type: Type of structured lattice
+        
+    Returns:
+        Tuple (samples, metadata)
+    """
+    poly_mod, q = lattice_params
+    degree = poly_mod.degree()
+    
+    logger.info(f"Starting structured IMHK sampler: type={basis_type}, degree={degree}, q={q}")
+    
+    # For structured lattices, we work in the polynomial ring
+    R = poly_mod.parent()
+    
+    # Initialize samples list
+    samples = []
+    acceptance_count = 0
+    total_count = 0
+    
+    # Generate initial sample (zero polynomial)
+    current_sample = R(0)
+    current_density = 1.0  # Density at origin
+    
+    # Main sampling loop
+    for i in range(num_samples + burn_in):
+        # Generate coefficients for polynomial sample
+        coeffs = []
+        for j in range(degree):
+            # Sample from discrete Gaussian over integers
+            coeff = _sample_discrete_gaussian_integer(sigma, 0)
+            coeffs.append(coeff % q)  # Reduce modulo q
+            
+        # Create polynomial from coefficients
+        proposal = R(coeffs)
+        
+        # Compute acceptance probability (simplified for structured lattices)
+        proposal_density = _compute_polynomial_gaussian_density(proposal, sigma, poly_mod, q)
+        
+        if current_density > 0:
+            ratio = proposal_density / current_density
+        else:
+            ratio = 1.0
+            
+        # Accept or reject
+        if random() < min(1, ratio):
+            current_sample = proposal
+            current_density = proposal_density
+            acceptance_count += 1
+            
+        total_count += 1
+        
+        # Store sample after burn-in
+        if i >= burn_in:
+            # Convert polynomial to vector of coefficients
+            coeffs_list = current_sample.list()
+            # Pad with zeros to full degree if necessary
+            while len(coeffs_list) < degree:
+                coeffs_list.append(0)
+            sample_vector = [int(c) for c in coeffs_list]
+            samples.append(sample_vector)
+            
+    # Convert samples to numpy array with correct shape
+    if samples:
+        samples_array = np.array(samples)
+    else:
+        samples_array = np.zeros((0, degree))  # Empty array with correct shape
+    
+    metadata = {
+        'acceptance_rate': acceptance_count / total_count if total_count > 0 else 0,
+        'basis_type': basis_type,
+        'polynomial_degree': degree,
+        'modulus': q,
+        'sigma': sigma,
+        'burn_in': burn_in
+    }
+    
+    return samples_array, metadata
+
+
+def _sample_discrete_gaussian_integer(sigma: float, center: float = 0) -> int:
+    """Sample from discrete Gaussian over integers."""
+    # Simple rejection sampling
+    bound = ceil(6 * sigma)  # 6-sigma bound
+    while True:
+        x = randint(-bound, bound)
+        prob = exp(-(x - center)**2 / (2 * sigma**2))
+        if random() < prob:
+            return x
+            
+
+def _compute_polynomial_gaussian_density(poly, sigma: float, poly_mod, q: int) -> float:
+    """Compute Gaussian density for polynomial."""
+    # Compute norm of polynomial coefficients
+    coeffs = poly.list()
+    norm_sq = sum(c**2 for c in coeffs)
+    return exp(-norm_sq / (2 * sigma**2))
+
+
 def _get_function(module_name, function_name):
     """Dynamically import a function to avoid circular dependencies."""
     import importlib
@@ -168,7 +408,7 @@ def discrete_gaussian_sampler_1d(center: float, sigma: float) -> int:
         return c_int
 
 
-def klein_sampler(B: Matrix, sigma: float, center: Optional[Vector] = None) -> Vector:
+def klein_sampler_single(B: Matrix, sigma: float, center: Optional[Vector] = None) -> Vector:
     """
     Klein's algorithm for sampling from a discrete Gaussian over a lattice.
     
@@ -204,6 +444,8 @@ def klein_sampler(B: Matrix, sigma: float, center: Optional[Vector] = None) -> V
     # Input validation
     if sigma <= 0:
         raise ValueError("Standard deviation (sigma) must be positive")
+    
+    logger.info(f"Starting Klein sampler: dim={B.nrows()}, sigma={sigma}")
     
     # Use center parameter, but work with c internally for consistency
     n = B.nrows()
@@ -267,7 +509,7 @@ def klein_sampler(B: Matrix, sigma: float, center: Optional[Vector] = None) -> V
 
 
 def imhk_sampler(B: Matrix, sigma: float, num_samples: int, center: Optional[Vector] = None, 
-                 burn_in: int = 1000) -> Tuple[List[Vector], float, List[Vector], List[bool]]:
+                 burn_in: int = 1000) -> Tuple[np.ndarray, dict]:
     """
     Independent Metropolis-Hastings-Klein algorithm for sampling from a discrete Gaussian
     over a lattice.
@@ -319,6 +561,8 @@ def imhk_sampler(B: Matrix, sigma: float, num_samples: int, center: Optional[Vec
     if burn_in < 0:
         raise ValueError("Burn-in period must be non-negative")
     
+    logger.info(f"Starting IMHK sampler: dim={B.nrows()}, sigma={sigma}, num_samples={num_samples}, burn_in={burn_in}")
+    
     # Use center parameter, but work with c internally for consistency
     n = B.nrows()
     c = center
@@ -333,7 +577,7 @@ def imhk_sampler(B: Matrix, sigma: float, num_samples: int, center: Optional[Vec
     
     try:
         # Initialize the chain with a sample from Klein's algorithm
-        current_sample = klein_sampler(B, sigma, c)
+        current_sample = klein_sampler_single(B, sigma, c)
         current_density = discrete_gaussian_pdf(current_sample, sigma, c)
         
         samples = []
@@ -349,7 +593,7 @@ def imhk_sampler(B: Matrix, sigma: float, num_samples: int, center: Optional[Vec
         # Run the chain
         for i in range(num_samples + burn_in):
             # Generate proposal using Klein's algorithm
-            proposal = klein_sampler(B, sigma, c)
+            proposal = klein_sampler_single(B, sigma, c)
             proposal_density = discrete_gaussian_pdf(proposal, sigma, c)
             
             # Compute the Metropolis-Hastings acceptance ratio with numerical safeguards
@@ -385,8 +629,63 @@ def imhk_sampler(B: Matrix, sigma: float, num_samples: int, center: Optional[Vec
         acceptance_rate = acceptance_count / total_count if total_count > 0 else 0.0
         logger.info(f"IMHK sampling completed with acceptance rate: {acceptance_rate:.4f}")
         
-        return samples, acceptance_rate, all_samples, all_accepts
+        # Convert to numpy array for compatibility
+        samples_array = np.array([list(s) for s in samples])
+        
+        # Create metadata dictionary
+        metadata = {
+            'acceptance_rate': acceptance_rate,
+            'samples_accepted': acceptance_count,
+            'samples_proposed': total_count,
+            'burn_in': burn_in,
+            'all_samples': all_samples,
+            'all_accepts': all_accepts
+        }
+        
+        return samples_array, metadata
         
     except Exception as e:
         logger.error(f"Error in IMHK sampler: {e}")
         raise RuntimeError(f"IMHK sampling failed: {e}") from e
+
+
+def imhk_sampler_publication(B: Matrix, sigma: float, num_samples: int, 
+                            center: Optional[Vector] = None, burn_in: int = 1000) -> Tuple[np.ndarray, dict]:
+    """Alias for imhk_sampler for publication compatibility."""
+    return imhk_sampler(B=B, sigma=sigma, num_samples=num_samples, 
+                       center=center, burn_in=burn_in)
+
+
+def klein_sampler(B: Matrix, sigma: float, num_samples: int, 
+                 center: Optional[Vector] = None) -> np.ndarray:
+    """
+    Klein's algorithm for sampling multiple points from a discrete Gaussian over a lattice.
+    
+    Args:
+        B (Matrix): The lattice basis matrix
+        sigma (float): The standard deviation of the Gaussian
+        num_samples (int): Number of samples to generate
+        center (Optional[Vector]): The center of the Gaussian (default: origin)
+        
+    Returns:
+        np.ndarray: Array of shape (num_samples, dimension) containing samples
+    """
+    if num_samples <= 0:
+        raise ValueError("num_samples must be positive")
+    
+    logger.info(f"Klein sampler: dim={B.nrows()}, sigma={sigma}, num_samples={num_samples}")
+    
+    samples = []
+    for i in range(num_samples):
+        if i > 0 and i % 1000 == 0:
+            logger.debug(f"Klein sampler: generated {i}/{num_samples} samples")
+        
+        # Use the single-sample Klein sampler
+        sample = klein_sampler_single(B, sigma, center)
+        samples.append(list(sample))
+    
+    logger.info(f"Klein sampler completed: {num_samples} samples generated")
+    return np.array(samples)
+
+
+# End of file

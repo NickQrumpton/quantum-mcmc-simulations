@@ -81,10 +81,15 @@ def imhk_sampler(B, sigma, num_samples, center=None, burn_in=1000):
     _imhk_sampler = get_function('samplers', 'imhk_sampler')
     return _imhk_sampler(B, sigma, num_samples, center, burn_in)
 
-def klein_sampler(B, sigma, center=None):
+def klein_sampler(B, sigma, num_samples, center=None):
     """Klein's algorithm for sampling from a discrete Gaussian over a lattice."""
     _klein_sampler = get_function('samplers', 'klein_sampler')
-    return _klein_sampler(B, sigma, center)
+    return _klein_sampler(B, sigma, num_samples, center)
+
+def klein_sampler_single(B, sigma, center=None):
+    """Klein's algorithm for sampling a single point from a discrete Gaussian over a lattice."""
+    _klein_sampler_single = get_function('samplers', 'klein_sampler_single')
+    return _klein_sampler_single(B, sigma, center)
 
 def discrete_gaussian_sampler_1d(center, sigma):
     """Sample from a 1D discrete Gaussian distribution."""
