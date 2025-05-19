@@ -1,6 +1,6 @@
 DATA INTEGRITY REPORT V3
 ==================================================
-Generated: 2025-05-19 12:43:42.075027
+Generated: 2025-05-19 18:45:11.964902
 Test directory: fixed_publication_results
 
 DIRECTORY STRUCTURE:
@@ -13,26 +13,26 @@ DIRECTORY STRUCTURE:
 FILE EXISTENCE:
 
 DATA:
-  all_results.csv: EXISTS (8,303 bytes)
-  all_results.json: EXISTS (21,461 bytes)
+  all_results.csv: EXISTS (8,486 bytes)
+  all_results.json: EXISTS (21,552 bytes)
 
 REPORTS:
-  publication_report.json: EXISTS (2,154 bytes)
-  summary_report.txt: EXISTS (392 bytes)
+  publication_report.json: EXISTS (1,592 bytes)
+  summary_report.txt: EXISTS (302 bytes)
 
 TABLES:
-  table1_summary_statistics.csv: EXISTS (383 bytes)
+  table1_summary_statistics.csv: EXISTS (380 bytes)
   table1_summary_statistics.tex: EXISTS (715 bytes)
-  table2_optimal_parameters.csv: EXISTS (495 bytes)
-  table2_optimal_parameters.tex: EXISTS (683 bytes)
+  table2_optimal_parameters.csv: EXISTS (705 bytes)
+  table2_optimal_parameters.tex: EXISTS (818 bytes)
 
 FIGURES:
-  fig1_tv_distance_comparison.pdf: EXISTS (17,216 bytes)
-  fig1_tv_distance_comparison.png: EXISTS (98,081 bytes)
-  fig2_acceptance_rates_heatmap.pdf: EXISTS (25,596 bytes)
-  fig2_acceptance_rates_heatmap.png: EXISTS (267,746 bytes)
-  fig3_performance_analysis.pdf: EXISTS (28,752 bytes)
-  fig3_performance_analysis.png: EXISTS (160,126 bytes)
+  fig1_tv_distance_comparison.pdf: EXISTS (17,227 bytes)
+  fig1_tv_distance_comparison.png: EXISTS (94,757 bytes)
+  fig2_acceptance_rates_heatmap.pdf: EXISTS (23,543 bytes)
+  fig2_acceptance_rates_heatmap.png: EXISTS (260,300 bytes)
+  fig3_performance_analysis.pdf: EXISTS (28,740 bytes)
+  fig3_performance_analysis.png: EXISTS (159,481 bytes)
 
 
 DATA SUMMARY:
@@ -46,24 +46,24 @@ METRICS BY LATTICE TYPE:
 IDENTITY:
   Experiments: 23
   Dimensions: [4, 8, 16, 32]
-  imhk_acceptance_rate: 23/23 (100.0% valid, avg=0.6323)
+  imhk_acceptance_rate: 23/23 (100.0% valid, avg=0.6322)
   tv_distance: 23/23 (100.0% valid, avg=1.0000)
-  ess: 23/23 (100.0% valid, avg=89.8611)
-  ess_per_second: 23/23 (100.0% valid, avg=5587.3878)
-  speedup: 23/23 (100.0% valid, avg=31.0602)
+  ess: 23/23 (100.0% valid, avg=93.1040)
+  ess_per_second: 23/23 (100.0% valid, avg=5882.1366)
+  speedup: 23/23 (100.0% valid, avg=30.6360)
   imhk_time: 23/23 (100.0% valid, avg=0.0136)
-  klein_time: 23/23 (100.0% valid, avg=0.2066)
+  klein_time: 23/23 (100.0% valid, avg=0.2097)
 
 Q-ARY:
   Experiments: 12
   Dimensions: [8, 16, 32]
-  imhk_acceptance_rate: 12/12 (100.0% valid, avg=0.6266)
+  imhk_acceptance_rate: 12/12 (100.0% valid, avg=0.6225)
   tv_distance: 0/12 (0.0% valid, avg=0.0000)
-  ess: 12/12 (100.0% valid, avg=41.2822)
-  ess_per_second: 12/12 (100.0% valid, avg=3618.7094)
-  speedup: 12/12 (100.0% valid, avg=43.6218)
-  imhk_time: 12/12 (100.0% valid, avg=0.0104)
-  klein_time: 12/12 (100.0% valid, avg=0.2923)
+  ess: 12/12 (100.0% valid, avg=45.0393)
+  ess_per_second: 12/12 (100.0% valid, avg=3930.3630)
+  speedup: 12/12 (100.0% valid, avg=44.9481)
+  imhk_time: 12/12 (100.0% valid, avg=0.0106)
+  klein_time: 12/12 (100.0% valid, avg=0.2959)
 
 NTRU:
   Experiments: 3
@@ -71,10 +71,10 @@ NTRU:
   imhk_acceptance_rate: 3/3 (100.0% valid, avg=0.0000)
   tv_distance: 0/3 (0.0% valid, avg=0.0000)
   ess: 3/3 (100.0% valid, avg=500.0000)
-  ess_per_second: 3/3 (100.0% valid, avg=50880.4282)
-  speedup: 3/3 (100.0% valid, avg=16.5055)
+  ess_per_second: 3/3 (100.0% valid, avg=50882.1747)
+  speedup: 3/3 (100.0% valid, avg=16.6714)
   imhk_time: 3/3 (100.0% valid, avg=0.0098)
-  klein_time: 3/3 (100.0% valid, avg=0.1622)
+  klein_time: 3/3 (100.0% valid, avg=0.1639)
 
 PRIMECYCLOTOMIC:
   Experiments: 3
@@ -82,10 +82,10 @@ PRIMECYCLOTOMIC:
   imhk_acceptance_rate: 3/3 (100.0% valid, avg=0.0000)
   tv_distance: 0/3 (0.0% valid, avg=0.0000)
   ess: 3/3 (100.0% valid, avg=500.0000)
-  ess_per_second: 3/3 (100.0% valid, avg=43888.1036)
-  speedup: 3/3 (100.0% valid, avg=19.4565)
-  imhk_time: 3/3 (100.0% valid, avg=0.0114)
-  klein_time: 3/3 (100.0% valid, avg=0.2216)
+  ess_per_second: 3/3 (100.0% valid, avg=43037.5163)
+  speedup: 3/3 (100.0% valid, avg=18.8246)
+  imhk_time: 3/3 (100.0% valid, avg=0.0116)
+  klein_time: 3/3 (100.0% valid, avg=0.2187)
 
 
 OVERALL ASSESSMENT: COMPLETE

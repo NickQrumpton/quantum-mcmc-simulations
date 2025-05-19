@@ -1,30 +1,31 @@
 {
-  "generation_timestamp": "2025-05-19 12:43:41",
-  "metrics_summary": {
+  "metadata": {
+    "generation_timestamp": "2025-05-19 18:45:11",
+    "version": "v3_final_updated_tables",
+    "total_experiments": 41
+  },
+  "summary": {
     "experiments_run": 41,
     "experiments_successful": 41,
     "experiments_failed": 0,
-    "figures_generated": [
-      "fixed_publication_results/figures/fig1_tv_distance_comparison.pdf",
-      "fixed_publication_results/figures/fig1_tv_distance_comparison.png",
-      "fixed_publication_results/figures/fig3_performance_analysis.pdf",
-      "fixed_publication_results/figures/fig3_performance_analysis.png"
-    ],
-    "tables_generated": [
-      "fixed_publication_results/tables/table1_summary_statistics.csv",
-      "fixed_publication_results/tables/table1_summary_statistics.tex",
-      "fixed_publication_results/tables/table2_optimal_parameters.csv",
-      "fixed_publication_results/tables/table2_optimal_parameters.tex"
-    ],
-    "files_generated": [
-      "fixed_publication_results/data/all_results.csv",
-      "fixed_publication_results/data/all_results.json"
-    ],
-    "errors": [
-      "Figure 2: create_acceptance_rates_figure_fixed() missing 1 required positional argument: 'metrics_tracker'"
-    ]
+    "success_rate": 100.0,
+    "errors_encountered": 0
   },
-  "output_files": {
+  "metrics_by_type": {},
+  "data_completeness": {
+    "all_files_generated": true,
+    "missing_files": [],
+    "data_files": 4,
+    "figure_files": 4,
+    "table_files": 6
+  },
+  "files_generated": {
+    "data": [
+      "fixed_publication_results/data/all_results.csv",
+      "fixed_publication_results/data/all_results.json",
+      "fixed_publication_results/figures/fig2_acceptance_rates_heatmap.pdf",
+      "fixed_publication_results/figures/fig2_acceptance_rates_heatmap.png"
+    ],
     "figures": [
       "fixed_publication_results/figures/fig1_tv_distance_comparison.pdf",
       "fixed_publication_results/figures/fig1_tv_distance_comparison.png",
@@ -35,20 +36,10 @@
       "fixed_publication_results/tables/table1_summary_statistics.csv",
       "fixed_publication_results/tables/table1_summary_statistics.tex",
       "fixed_publication_results/tables/table2_optimal_parameters.csv",
-      "fixed_publication_results/tables/table2_optimal_parameters.tex"
-    ],
-    "data": [
-      "fixed_publication_results/data/all_results.csv",
-      "fixed_publication_results/data/all_results.json"
+      "fixed_publication_results/tables/table2_optimal_parameters.tex",
+      "fixed_publication_results/tables/table3_performance_summary.csv",
+      "fixed_publication_results/tables/table3_performance_summary.tex"
     ]
   },
-  "experiment_summary": {
-    "total_experiments": 41,
-    "successful": 41,
-    "failed": 0,
-    "success_rate": 100.0
-  },
-  "errors_encountered": [
-    "Figure 2: create_acceptance_rates_figure_fixed() missing 1 required positional argument: 'metrics_tracker'"
-  ]
+  "errors": []
 }
