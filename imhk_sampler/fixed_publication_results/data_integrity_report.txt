@@ -1,0 +1,86 @@
+DATA INTEGRITY REPORT V2
+==================================================
+Generated: 2025-05-19 11:40:55.802878
+
+MAIN RESULTS FILE: fixed_publication_results/data/all_results.csv
+Total experiments: 51
+
+ANALYSIS BY LATTICE TYPE:
+------------------------------
+
+NTRU:
+  Total experiments: 4
+  Dimensions: [512]
+  Metrics:
+    imhk_acceptance_rate: 4/4 (100.0% valid, avg=0.4533)
+    tv_distance: 0/4 (0.0% valid, avg=0.0000)
+    ess: 4/4 (100.0% valid, avg=0.0000)
+    ess_per_second: 4/4 (100.0% valid, avg=0.0000)
+    speedup: 4/4 (100.0% valid, avg=0.2168)
+    imhk_time: 4/4 (100.0% valid, avg=0.0148)
+    klein_time: 4/4 (100.0% valid, avg=0.0032)
+
+PRIMECYCLOTOMIC:
+  Total experiments: 4
+  Dimensions: [683]
+  Metrics:
+    imhk_acceptance_rate: 4/4 (100.0% valid, avg=0.4663)
+    tv_distance: 0/4 (0.0% valid, avg=0.0000)
+    ess: 4/4 (100.0% valid, avg=0.0000)
+    ess_per_second: 4/4 (100.0% valid, avg=0.0000)
+    speedup: 4/4 (100.0% valid, avg=0.2602)
+    imhk_time: 4/4 (100.0% valid, avg=0.0076)
+    klein_time: 4/4 (100.0% valid, avg=0.0020)
+
+IDENTITY:
+  Total experiments: 28
+  Dimensions: [4, 8, 16, 32]
+  Metrics:
+    imhk_acceptance_rate: 28/28 (100.0% valid, avg=0.0000)
+    tv_distance: 0/28 (0.0% valid, avg=0.0000)
+    ess: 28/28 (100.0% valid, avg=0.0000)
+    ess_per_second: 28/28 (100.0% valid, avg=0.0000)
+    speedup: 28/28 (100.0% valid, avg=3.1995)
+    imhk_time: 28/28 (100.0% valid, avg=0.0000)
+    klein_time: 28/28 (100.0% valid, avg=0.0001)
+
+Q-ARY:
+  Total experiments: 15
+  Dimensions: [8, 16, 32]
+  Metrics:
+    imhk_acceptance_rate: 15/15 (100.0% valid, avg=0.0000)
+    tv_distance: 0/15 (0.0% valid, avg=0.0000)
+    ess: 15/15 (100.0% valid, avg=0.0000)
+    ess_per_second: 15/15 (100.0% valid, avg=0.0000)
+    speedup: 15/15 (100.0% valid, avg=3.1682)
+    imhk_time: 15/15 (100.0% valid, avg=0.0000)
+    klein_time: 15/15 (100.0% valid, avg=0.0001)
+
+
+FILE EXISTENCE CHECK:
+------------------------------
+
+DATA:
+  all_results.csv: EXISTS
+  all_results.json: EXISTS
+
+REPORTS:
+  publication_report.json: EXISTS
+  summary_report.txt: EXISTS
+
+TABLES:
+  table1_summary_statistics.csv: EXISTS
+  table1_summary_statistics.tex: EXISTS
+  table2_optimal_parameters.csv: EXISTS
+  table2_optimal_parameters.tex: EXISTS
+
+FIGURES:
+  fig1_tv_distance_comparison.pdf: EXISTS
+  fig1_tv_distance_comparison.png: EXISTS
+  fig2_acceptance_rates_heatmap.pdf: MISSING
+  fig2_acceptance_rates_heatmap.png: MISSING
+  fig3_performance_analysis.pdf: EXISTS
+  fig3_performance_analysis.png: EXISTS
+
+
+OVERALL STATUS: INCOMPLETE

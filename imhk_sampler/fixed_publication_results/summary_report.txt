@@ -1,0 +1,18 @@
+Publication Results Generation Summary
+========================================
+
+Generated on: 2025-05-19 12:43:41
+
+Experiments Summary:
+  Total: 41
+  Successful: 41
+  Failed: 0
+  Success Rate: 100.0%
+
+Generated Files:
+  Figures: 4
+  Tables: 4
+  Data Files: 2
+
+Errors Encountered:
+  - Figure 2: create_acceptance_rates_figure_fixed() missing 1 required positional argument: 'metrics_tracker'

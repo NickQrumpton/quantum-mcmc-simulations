@@ -1,0 +1,91 @@
+DATA INTEGRITY REPORT V3
+==================================================
+Generated: 2025-05-19 12:43:42.075027
+Test directory: fixed_publication_results
+
+DIRECTORY STRUCTURE:
+  data: fixed_publication_results/data - EXISTS
+  reports: fixed_publication_results - EXISTS
+  tables: fixed_publication_results/tables - EXISTS
+  figures: fixed_publication_results/figures - EXISTS
+
+
+FILE EXISTENCE:
+
+DATA:
+  all_results.csv: EXISTS (8,303 bytes)
+  all_results.json: EXISTS (21,461 bytes)
+
+REPORTS:
+  publication_report.json: EXISTS (2,154 bytes)
+  summary_report.txt: EXISTS (392 bytes)
+
+TABLES:
+  table1_summary_statistics.csv: EXISTS (383 bytes)
+  table1_summary_statistics.tex: EXISTS (715 bytes)
+  table2_optimal_parameters.csv: EXISTS (495 bytes)
+  table2_optimal_parameters.tex: EXISTS (683 bytes)
+
+FIGURES:
+  fig1_tv_distance_comparison.pdf: EXISTS (17,216 bytes)
+  fig1_tv_distance_comparison.png: EXISTS (98,081 bytes)
+  fig2_acceptance_rates_heatmap.pdf: EXISTS (25,596 bytes)
+  fig2_acceptance_rates_heatmap.png: EXISTS (267,746 bytes)
+  fig3_performance_analysis.pdf: EXISTS (28,752 bytes)
+  fig3_performance_analysis.png: EXISTS (160,126 bytes)
+
+
+DATA SUMMARY:
+Total experiments: 41
+Lattice types: ['identity', 'q-ary', 'NTRU', 'PrimeCyclotomic']
+Dimensions: [4, 8, 16, 32, 512, 683]
+
+
+METRICS BY LATTICE TYPE:
+
+IDENTITY:
+  Experiments: 23
+  Dimensions: [4, 8, 16, 32]
+  imhk_acceptance_rate: 23/23 (100.0% valid, avg=0.6323)
+  tv_distance: 23/23 (100.0% valid, avg=1.0000)
+  ess: 23/23 (100.0% valid, avg=89.8611)
+  ess_per_second: 23/23 (100.0% valid, avg=5587.3878)
+  speedup: 23/23 (100.0% valid, avg=31.0602)
+  imhk_time: 23/23 (100.0% valid, avg=0.0136)
+  klein_time: 23/23 (100.0% valid, avg=0.2066)
+
+Q-ARY:
+  Experiments: 12
+  Dimensions: [8, 16, 32]
+  imhk_acceptance_rate: 12/12 (100.0% valid, avg=0.6266)
+  tv_distance: 0/12 (0.0% valid, avg=0.0000)
+  ess: 12/12 (100.0% valid, avg=41.2822)
+  ess_per_second: 12/12 (100.0% valid, avg=3618.7094)
+  speedup: 12/12 (100.0% valid, avg=43.6218)
+  imhk_time: 12/12 (100.0% valid, avg=0.0104)
+  klein_time: 12/12 (100.0% valid, avg=0.2923)
+
+NTRU:
+  Experiments: 3
+  Dimensions: [512]
+  imhk_acceptance_rate: 3/3 (100.0% valid, avg=0.0000)
+  tv_distance: 0/3 (0.0% valid, avg=0.0000)
+  ess: 3/3 (100.0% valid, avg=500.0000)
+  ess_per_second: 3/3 (100.0% valid, avg=50880.4282)
+  speedup: 3/3 (100.0% valid, avg=16.5055)
+  imhk_time: 3/3 (100.0% valid, avg=0.0098)
+  klein_time: 3/3 (100.0% valid, avg=0.1622)
+
+PRIMECYCLOTOMIC:
+  Experiments: 3
+  Dimensions: [683]
+  imhk_acceptance_rate: 3/3 (100.0% valid, avg=0.0000)
+  tv_distance: 0/3 (0.0% valid, avg=0.0000)
+  ess: 3/3 (100.0% valid, avg=500.0000)
+  ess_per_second: 3/3 (100.0% valid, avg=43888.1036)
+  speedup: 3/3 (100.0% valid, avg=19.4565)
+  imhk_time: 3/3 (100.0% valid, avg=0.0114)
+  klein_time: 3/3 (100.0% valid, avg=0.2216)
+
+
+OVERALL ASSESSMENT: COMPLETE

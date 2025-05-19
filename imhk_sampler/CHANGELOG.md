@@ -5,6 +5,47 @@ All notable changes to the IMHK Sampler project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-05-19
+
+### Added
+- **JSON Serialization Enhancements**
+  - Custom JSON encoder (`NumpyJSONEncoder`) to handle NumPy and SageMath data types
+  - JSON serialization utilities module (`json_serialization_utils.py`) with:
+    - `sanitize_data_for_json()` for recursive type conversion
+    - `save_json_safely()` for robust JSON saving with error handling
+    - `validate_json_serializable()` for data validation
+    - `debug_data_structure()` for troubleshooting complex data structures
+  
+- **Comprehensive Unit Tests**
+  - Created `test_generate_publication_results.py` with tests for:
+    - JSON serialization for all data types (int, float, list, dict, numpy.int64, numpy.float64, numpy.ndarray)
+    - Proper error handling for unsupported data types
+    - Specific tests for Q-ary and NTRU lattice results
+    - Pandas DataFrame serialization
+    - Report generation validation
+
+### Changed
+- Updated `generate_publication_results.py` to use safe JSON serialization
+- Enhanced logging to provide detailed information about serialization issues
+- Improved data type handling in report generation
+- Modified JSON saving to use custom encoder throughout
+
+### Fixed
+- **JSON Serialization Errors**
+  - Fixed serialization errors for numpy.int64, numpy.float64, and numpy.ndarray types
+  - Proper handling of NaN and infinity values in JSON output
+  - Type conversion issues in pandas DataFrame to JSON conversion
+  - Path object serialization issues
+  
+- **Data Type Handling**
+  - Ensured all numeric types are converted to native Python types
+  - Fixed grouped data aggregation type issues
+  - Resolved pandas Series to dict conversion problems
+
+### Security
+- Added validation for JSON serializable data to prevent runtime errors
+- Implemented safe error handling for data conversion
+
 ## [1.0-publication] - 2024-01-XX
 
 ### Added

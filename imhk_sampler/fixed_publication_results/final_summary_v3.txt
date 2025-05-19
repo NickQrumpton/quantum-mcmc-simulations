@@ -1,0 +1,7 @@
+FINAL SUMMARY V3
+==================================================
+Generated: 2025-05-19 11:51:08.606213
+Output directory: fixed_publication_results
+
+Overall Status: COMPLETE
+Files generated: 14/14

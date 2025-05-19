@@ -18,6 +18,14 @@ from math import sqrt
 # Add current directory to path
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Import JSON serialization utilities
+from json_serialization_utils import (
+    NumpyJSONEncoder, 
+    sanitize_data_for_json, 
+    save_json_safely, 
+    validate_json_serializable
+)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -183,8 +191,8 @@ class PublicationResultsGenerator:
         df = pd.DataFrame(all_results)
         df.to_csv(self.data_dir / 'all_results.csv', index=False)
         
-        with open(self.data_dir / 'all_results.json', 'w') as f:
-            json.dump(all_results, f, indent=2)
+        # Save JSON safely with proper type conversion
+        save_json_safely(all_results, self.data_dir / 'all_results.json')
         
         return df
     
@@ -409,17 +417,36 @@ class PublicationResultsGenerator:
         
         # Generate final report
         logger.info("Generating final report...")
+        
+        # Convert data types to ensure JSON compatibility
+        lattice_types = [str(lt) for lt in df['basis_type'].unique()]
+        dimensions = [int(d) for d in sorted(df['dimension'].unique())]
+        
+        # Handle grouped data with proper type conversion
+        acceptance_rates = {}
+        for basis, rate in df.groupby('basis_type')['imhk_acceptance_rate'].mean().items():
+            acceptance_rates[str(basis)] = float(rate) if pd.notna(rate) else None
+            
+        tv_distances = {}
+        tv_df = df[df['tv_distance'].notna()]
+        for basis, dist in tv_df.groupby('basis_type')['tv_distance'].mean().items():
+            tv_distances[str(basis)] = float(dist) if pd.notna(dist) else None
+        
         report = {
-            'total_experiments': len(df),
-            'lattice_types': list(df['basis_type'].unique()),
-            'dimensions_tested': sorted(df['dimension'].unique()),
-            'average_acceptance_rates': df.groupby('basis_type')['imhk_acceptance_rate'].mean().to_dict(),
-            'average_tv_distances': df[df['tv_distance'].notna()].groupby('basis_type')['tv_distance'].mean().to_dict(),
+            'total_experiments': int(len(df)),
+            'lattice_types': lattice_types,
+            'dimensions_tested': dimensions,
+            'average_acceptance_rates': acceptance_rates,
+            'average_tv_distances': tv_distances,
             'optimal_parameters': optimal_params.to_dict('records')
         }
         
-        with open(self.output_dir / 'publication_report.json', 'w') as f:
-            json.dump(report, f, indent=2)
+        # Validate and save JSON safely
+        problems = validate_json_serializable(report)
+        if problems:
+            logger.warning(f"JSON serialization issues found: {problems}")
+            
+        save_json_safely(report, self.output_dir / 'publication_report.json')
         
         logger.info("\n" + "="*60)
         logger.info("PUBLICATION RESULTS GENERATED")
